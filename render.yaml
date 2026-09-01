@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: carrerafut
+    runtime: node
+    plan: starter
+    buildCommand: npm install && npm run build
+    # Migrations + seed run at start (not build) because the persistent disk below is only
+    # mounted at runtime — writing to /data during the build step wouldn't land on the volume.
+    # Both are safe to re-run on every restart: migrate skips already-applied migrations, and
+    # the seed script upserts (see prisma/seed.ts).
+    startCommand: npx prisma migrate deploy && npx prisma db seed && npm run start
+    envVars:
+      - key: DATABASE_URL
+        value: file:/data/dev.db
+      - key: SESSION_COOKIE_NAME
+        value: carrerafut_session
+      - key: NODE_ENV
+        value: production
+    disk:
+      name: carrerafut-data
+      mountPath: /data
+      sizeGB: 1

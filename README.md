@@ -53,6 +53,20 @@ mayoría (fácil de testear):
 
 ## Deploy
 
-Es una app Next.js estándar (`npm run build && npm run start`). Como usa SQLite, alcanza con
-persistir el archivo de `DATABASE_URL` entre despliegues (por ejemplo, un volumen si se corre
-en un contenedor).
+Es una app Next.js estándar (`npm run build && npm run start`) — **no es un sitio estático**:
+usa Server Actions, sesiones con cookie y lee la base de datos en cada request, así que necesita
+un proceso Node corriendo siempre, no una carpeta de HTML para "publicar". Como usa SQLite,
+además hace falta persistir el archivo de `DATABASE_URL` entre despliegues (un volumen si se
+corre en un contenedor) — si el disco es efímero, la base se resetea en cada deploy/reinicio y
+se pierden todas las cuentas y carreras.
+
+### Render
+
+El repo incluye `render.yaml` (Blueprint) para crear el servicio ya bien configurado: tipo
+**Web Service** (no "Static Site"), con un disco persistente montado en `/data` y
+`DATABASE_URL=file:/data/dev.db`. Requiere el plan **Starter** o superior — el plan **Free** de
+Render no soporta discos persistentes, así que la base se borraría en cada redeploy.
+
+1. En Render: New → Blueprint → conectar este repo. Va a leer `render.yaml` solo.
+2. Si ya creaste el servicio a mano como "Static Site", hay que borrarlo y crear uno nuevo — no
+   se puede convertir un Static Site existente en Web Service.
