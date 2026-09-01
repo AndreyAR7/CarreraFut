@@ -1,0 +1,388 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { advanceSeasonAction, resolveClubOfferAction, resolveEventAction } from "@/app/actions/career";
+import { ClubCrest } from "@/components/ClubCrest";
+import { EventIllustration } from "@/components/EventIllustration";
+import { Flag } from "@/components/Flag";
+import { ClubOfferOption } from "@/lib/game/clubOffers";
+import { crestSrc } from "@/lib/game/data/crestFiles";
+import { EffectTone } from "@/lib/game/format";
+import { EVENT_CATEGORY_LABELS, EventCategory } from "@/lib/game/types";
+
+export interface EventOutcomePayload {
+  id: string;
+  chance: number;
+  tag: string;
+  tone: EffectTone;
+  summary: string;
+}
+
+export interface EventOptionPayload {
+  key: string;
+  label: string;
+  description: string;
+  outcomes: EventOutcomePayload[];
+}
+
+export type DecisionState =
+  | { type: "offer"; title: string; description: string; options: ClubOfferOption[] }
+  | { type: "event"; title: string; description: string; category: EventCategory; options: EventOptionPayload[] }
+  | { type: "none" };
+
+const CATEGORY_ICONS: Record<EventCategory, string> = {
+  DISCIPLINA: "🟥",
+  SALUD: "🏥",
+  ENTRENAMIENTO: "🏋️",
+  PERSONAL: "🏡",
+  MEDIA: "🎙️",
+  SELECCION: "🎽",
+  FINANZAS: "💰",
+};
+
+const TONE_STYLES: Record<EffectTone, string> = {
+  positive: "border-accent/40 bg-accent/12 text-accent",
+  negative: "border-danger/40 bg-danger/12 text-danger",
+  neutral: "border-border bg-surface text-muted",
+};
+
+const TONE_ICONS: Record<EffectTone, string> = {
+  positive: "▲",
+  negative: "▼",
+  neutral: "•",
+};
+
+const STARS = "★★★★★";
+
+function sleep(ms: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, ms));
+}
+
+// Decelerating "homing" flicker across a fixed number of decorative ticks, landing on the real
+// outcome we already have in hand by the time this runs. No Date.now()/Math.random() here on
+// purpose — a plain step counter keeps this fine to call from the component (unlike the timing
+// helpers this file used to have).
+async function spinToIndex(
+  n: number,
+  targetIndex: number,
+  onTick: (index: number) => void,
+  isAlive: () => boolean,
+): Promise<void> {
+  const decorativeTicks = 7;
+  const totalSteps = decorativeTicks + (((targetIndex - decorativeTicks) % n) + n) % n;
+  for (let step = 0; step <= totalSteps; step++) {
+    if (!isAlive()) return;
+    onTick(step % n);
+    const progress = step / totalSteps;
+    await sleep(90 + progress * progress * 260);
+  }
+  onTick(targetIndex);
+}
+
+function OutcomeChip({
+  outcome,
+  highlighted,
+  dimmed,
+}: {
+  outcome: EventOutcomePayload;
+  highlighted?: boolean;
+  dimmed?: boolean;
+}) {
+  return (
+    <div
+      className={`flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-all duration-300 ${TONE_STYLES[outcome.tone]} ${
+        highlighted ? "pop-in scale-105 shadow-[0_0_12px_rgba(255,255,255,0.35)] ring-2 ring-white/70" : ""
+      } ${dimmed ? "opacity-35 grayscale" : ""}`}
+    >
+      <span className="text-[10px]">{TONE_ICONS[outcome.tone]}</span>
+      <span className="tabular-nums">{Math.round(outcome.chance * 100)}%</span>
+      <span className="text-foreground/80">{outcome.tag}</span>
+    </div>
+  );
+}
+
+function DecisionShell({
+  banner,
+  badge,
+  title,
+  description,
+  hint,
+  children,
+}: {
+  banner: React.ReactNode;
+  badge: React.ReactNode;
+  title: string;
+  description: string;
+  hint: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-border bg-surface shadow-lg">
+      <div className="relative h-28">
+        {banner}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
+        <div className="absolute left-4 top-3">{badge}</div>
+        <h2 className="absolute inset-x-4 bottom-3 text-lg font-extrabold text-white drop-shadow">{title}</h2>
+      </div>
+      <div className="p-5">
+        <p className="text-sm text-muted">{description}</p>
+        <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-accent">👉 {hint}</p>
+        <div className="mt-5 flex flex-col gap-3">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+type Phase = "idle" | "busy" | "spinning" | "revealed";
+
+export function DecisionInteractive({ careerId, state }: { careerId: string; state: DecisionState }) {
+  // React Strict Mode (dev only) mounts every component, cleans it up, then mounts it again to
+  // surface effects with missing cleanup. That means the mount phase must reset this to true —
+  // setting it only in useRef's initializer left it permanently false after Strict Mode's first
+  // simulated unmount, silently short-circuiting every `if (!aliveRef.current) return;` guard
+  // below for the rest of the component's life. This bit us for real: every click resolved fine
+  // server-side but the UI never updated, because the code bailed out right after `alive` check.
+  const aliveRef = useRef(true);
+  useEffect(() => {
+    aliveRef.current = true;
+    return () => {
+      aliveRef.current = false;
+    };
+  }, []);
+
+  const [phase, setPhase] = useState<Phase>("idle");
+  const [frozen, setFrozen] = useState<DecisionState | null>(null);
+  const [activeKey, setActiveKey] = useState<string | null>(null);
+  const [spinIndex, setSpinIndex] = useState(0);
+  const [result, setResult] = useState<{ outcomeId: string; summary: string } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const display = phase === "idle" ? state : (frozen ?? state);
+  const busy = phase !== "idle";
+
+  // A full reload — not router.refresh() — is deliberate here: this app hit a real bug where
+  // repeated soft client-side refreshes raced the Server Action's own revalidation and lost the
+  // update, leaving one part of the page fresh and another stuck on stale data. A hard reload
+  // always fetches one single, fully consistent server response.
+  function reload() {
+    if (!aliveRef.current) return;
+    window.location.reload();
+  }
+
+  async function handleChooseOffer(option: ClubOfferOption) {
+    if (phase !== "idle") return;
+    setError(null);
+    setFrozen(state);
+    setActiveKey(option.optionKey);
+    setPhase("busy");
+    try {
+      await resolveClubOfferAction(careerId, option.optionKey);
+    } catch (e) {
+      console.error("resolveClubOfferAction failed:", e);
+    }
+    reload();
+  }
+
+  async function handleAdvance() {
+    if (phase !== "idle") return;
+    setError(null);
+    setFrozen(state);
+    setPhase("busy");
+    try {
+      await advanceSeasonAction(careerId);
+    } catch (e) {
+      console.error("advanceSeasonAction failed:", e);
+    }
+    reload();
+  }
+
+  async function handleChooseEvent(option: EventOptionPayload) {
+    if (phase !== "idle") return;
+    setError(null);
+    setFrozen(state);
+    setActiveKey(option.key);
+    setResult(null);
+
+    const n = Math.max(1, option.outcomes.length);
+    setPhase(n > 1 ? "spinning" : "busy");
+    setSpinIndex(0);
+
+    let resolved;
+    try {
+      resolved = await resolveEventAction(careerId, option.key);
+    } catch (e) {
+      console.error("resolveEventAction failed:", e);
+      reload();
+      return;
+    }
+    if (!aliveRef.current) return;
+
+    const targetIndex = Math.max(0, option.outcomes.findIndex((o) => o.id === resolved.outcomeId));
+    if (n > 1) {
+      await spinToIndex(n, targetIndex, (idx) => aliveRef.current && setSpinIndex(idx), () => aliveRef.current);
+      if (!aliveRef.current) return;
+    }
+
+    setResult(resolved);
+    setPhase("revealed");
+    await sleep(3200);
+    reload();
+  }
+
+  const errorBanner = error && (
+    <p className="mb-3 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">⚠️ {error}</p>
+  );
+
+  if (display.type === "offer") {
+    return (
+      <>
+      {errorBanner}
+      <DecisionShell
+        banner={<div className="h-full w-full bg-gradient-to-br from-[#0f2f1c] via-[#134025] to-accent-strong" />}
+        badge={
+          <span className="rounded-full bg-black/40 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white backdrop-blur">
+            📋 Decisión de club
+          </span>
+        }
+        title={display.title}
+        description={display.description}
+        hint="Un clic define tu elección y arranca la próxima temporada."
+      >
+        {display.options.map((option) => {
+          const isActive = activeKey === option.optionKey;
+          return (
+            <button
+              key={option.optionKey}
+              type="button"
+              disabled={busy}
+              onClick={() => handleChooseOffer(option)}
+              className={`flex w-full items-center gap-3 rounded-xl border-2 border-border bg-surface-alt p-4 text-left transition ${
+                busy && !isActive ? "opacity-40" : ""
+              } ${!busy ? "hover:scale-[1.01] hover:border-accent hover:bg-accent/10" : ""} ${
+                isActive ? "border-accent" : ""
+              }`}
+            >
+              {option.clubColor && option.clubShort && (
+                <ClubCrest color={option.clubColor} label={option.clubShort} src={crestSrc(option.clubKey)} size={40} />
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="flex items-center gap-2 truncate text-base font-bold">
+                  {option.label}
+                  {option.countryCode && <Flag code={option.countryCode} />}
+                </p>
+                {option.description && <p className="truncate text-xs text-muted">{option.description}</p>}
+                {option.reputation && (
+                  <p className="mt-0.5 text-xs tracking-wide text-gold">
+                    {STARS.slice(0, option.reputation)}
+                    <span className="text-border">{STARS.slice(option.reputation)}</span>
+                  </p>
+                )}
+                {isActive && (
+                  <p className="mt-1 text-xs text-accent">
+                    <span className="spin-die inline-block">🎲</span> Confirmando fichaje…
+                  </p>
+                )}
+              </div>
+            </button>
+          );
+        })}
+      </DecisionShell>
+      </>
+    );
+  }
+
+  if (display.type === "event") {
+    const category = display.category;
+    return (
+      <>
+      {errorBanner}
+      <DecisionShell
+        banner={<EventIllustration category={category} />}
+        badge={
+          <span className="rounded-full bg-black/40 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white backdrop-blur">
+            {CATEGORY_ICONS[category]} {EVENT_CATEGORY_LABELS[category]}
+          </span>
+        }
+        title={display.title}
+        description={display.description}
+        hint={phase === "revealed" ? "Mirá cómo salió y seguí cuando quieras." : "Un clic resuelve la decisión."}
+      >
+        {display.options.map((option) => {
+          const isActive = activeKey === option.key;
+          const revealedHere = isActive && phase === "revealed";
+          return (
+            <div
+              key={option.key}
+              className={`flex h-full w-full flex-col rounded-xl border-2 p-4 text-left transition ${
+                revealedHere ? "border-accent" : "border-border"
+              } ${busy && !isActive ? "opacity-40" : "bg-surface-alt"}`}
+            >
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => handleChooseEvent(option)}
+                className={`flex flex-col text-left ${!busy ? "cursor-pointer hover:opacity-90" : "cursor-default"}`}
+              >
+                <p className="text-base font-bold">{option.label}</p>
+                <p className="mt-0.5 text-xs text-muted">{option.description}</p>
+              </button>
+              <div className="mt-3 flex flex-col gap-1.5">
+                {option.outcomes.map((outcome, idx) => (
+                  <OutcomeChip
+                    key={outcome.id}
+                    outcome={outcome}
+                    highlighted={isActive && ((phase === "spinning" && idx === spinIndex) || (phase === "revealed" && outcome.id === result?.outcomeId))}
+                    dimmed={isActive && phase === "revealed" && outcome.id !== result?.outcomeId}
+                  />
+                ))}
+              </div>
+              {isActive && phase === "spinning" && (
+                <p className="mt-3 text-xs font-semibold text-accent">
+                  <span className="spin-die inline-block">🎲</span> Definiendo la suerte…
+                </p>
+              )}
+              {revealedHere && result && (
+                <>
+                  <p className="pop-in mt-3 rounded-lg bg-background/60 p-2 text-xs italic text-foreground/90">
+                    {result.summary}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={reload}
+                    className="mt-3 w-full rounded-full bg-accent px-4 py-2 text-sm font-semibold text-black transition hover:bg-accent-strong"
+                  >
+                    Continuar ▶️
+                  </button>
+                </>
+              )}
+            </div>
+          );
+        })}
+      </DecisionShell>
+      </>
+    );
+  }
+
+  return (
+    <>
+    {errorBanner}
+    <div className="rounded-2xl border border-border bg-surface p-6 text-center">
+      <p className="text-sm text-muted">🎮 No tenés decisiones pendientes.</p>
+      <button
+        type="button"
+        disabled={busy}
+        onClick={handleAdvance}
+        className="mt-4 w-full rounded-full bg-accent px-6 py-3 font-semibold text-black transition hover:scale-[1.02] hover:bg-accent-strong disabled:opacity-60 sm:w-auto"
+      >
+        {busy ? (
+          <>
+            <span className="spin-die inline-block">🎲</span> Simulando temporada…
+          </>
+        ) : (
+          "▶️ Avanzar temporada"
+        )}
+      </button>
+    </div>
+    </>
+  );
+}

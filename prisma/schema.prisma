@@ -1,0 +1,220 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String?  @unique
+  passwordHash String?
+  displayName  String
+  role         String   @default("PLAYER")
+  isGuest      Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  careers  PlayerCareer[]
+  sessions Session[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Country {
+  id            String @id @default(cuid())
+  code          String @unique
+  name          String @unique
+  flag          String
+  footballPower Int    @default(3)
+
+  clubs               Club[]
+  leagues              League[]
+  careersByNationality PlayerCareer[] @relation("Nationality")
+}
+
+model League {
+  id                String @id @default(cuid())
+  key               String @unique
+  name              String
+  tier              Int
+  matchesPerSeason  Int
+  countryId         String
+
+  country Country @relation(fields: [countryId], references: [id])
+  clubs   Club[]
+}
+
+model Club {
+  id           String @id @default(cuid())
+  key          String @unique
+  name         String
+  shortName    String
+  reputation   Int
+  primaryColor String
+  leagueId     String
+  countryId    String
+
+  league  League  @relation(fields: [leagueId], references: [id])
+  country Country @relation(fields: [countryId], references: [id])
+
+  careersCurrent    PlayerCareer[]  @relation("CurrentClub")
+  onLoanFrom        PlayerCareer[]  @relation("LoanFromClub")
+  seasonLogs        SeasonLog[]
+  trophies          Trophy[]
+
+  @@index([leagueId])
+  @@index([countryId])
+}
+
+model PlayerCareer {
+  id             String  @id @default(cuid())
+  userId         String
+  lastName       String
+  jerseyNumber   Int
+  foot           String
+  nationalityId  String
+  position       String
+  difficulty     String
+  status         String  @default("ACTIVE")
+
+  age            Int     @default(16)
+  seasonIndex    Int     @default(0)
+
+  currentClubId  String?
+  onLoanFromId   String?
+
+  marketValueEUR Int     @default(50000)
+
+  pace       Int @default(40)
+  shooting   Int @default(40)
+  passing    Int @default(40)
+  defense    Int @default(40)
+  physical   Int @default(40)
+  mentality  Int @default(40)
+  overall    Int @default(40)
+
+  morale     Int @default(70)
+  fitness    Int @default(100)
+  reputation Int @default(0)
+  starterShare Float @default(0.6)
+  pendingMatchPenalty Int @default(0)
+
+  ntCaps    Int @default(0)
+  ntGoals   Int @default(0)
+  ntAssists Int @default(0)
+
+  celebrationJson String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nationality Country @relation("Nationality", fields: [nationalityId], references: [id])
+  currentClub Club?   @relation("CurrentClub", fields: [currentClubId], references: [id])
+  onLoanFrom  Club?   @relation("LoanFromClub", fields: [onLoanFromId], references: [id])
+
+  seasons      SeasonLog[]
+  events       CareerEventLog[]
+  trophies     Trophy[]
+  pendingEvent PendingEvent?
+  pendingOffer PendingClubOffer?
+
+  @@index([userId])
+}
+
+model SeasonLog {
+  id       String  @id @default(cuid())
+  careerId String
+  age      Int
+  clubId   String?
+  onLoan   Boolean @default(false)
+
+  overall     Int
+  matches     Int     @default(0)
+  goals       Int     @default(0)
+  assists     Int     @default(0)
+  avgRating   Float   @default(6.0)
+  leagueResult String?
+  cupResult    String?
+  continentalResult String?
+
+  ntCallUp   Boolean @default(false)
+  ntCaps     Int     @default(0)
+  ntGoals    Int     @default(0)
+  ntAssists  Int     @default(0)
+
+  createdAt DateTime @default(now())
+
+  career PlayerCareer @relation(fields: [careerId], references: [id], onDelete: Cascade)
+  club   Club?        @relation(fields: [clubId], references: [id])
+
+  @@index([careerId])
+}
+
+model CareerEventLog {
+  id          String @id @default(cuid())
+  careerId    String
+  age         Int
+  eventKey    String
+  eventTitle  String
+  optionKey   String
+  optionLabel String
+  outcomeSummary String
+  statDeltaJson  String
+
+  createdAt DateTime @default(now())
+
+  career PlayerCareer @relation(fields: [careerId], references: [id], onDelete: Cascade)
+
+  @@index([careerId])
+}
+
+model Trophy {
+  id             String  @id @default(cuid())
+  careerId       String
+  age            Int
+  name           String
+  tier           String
+  clubId         String?
+  isNationalTeam Boolean @default(false)
+
+  career PlayerCareer @relation(fields: [careerId], references: [id], onDelete: Cascade)
+  club   Club?        @relation(fields: [clubId], references: [id])
+
+  @@index([careerId])
+}
+
+model PendingEvent {
+  id          String @id @default(cuid())
+  careerId    String @unique
+  age         Int
+  eventKey    String
+  title       String
+  description String
+  optionsJson String
+  createdAt   DateTime @default(now())
+
+  career PlayerCareer @relation(fields: [careerId], references: [id], onDelete: Cascade)
+}
+
+model PendingClubOffer {
+  id          String   @id @default(cuid())
+  careerId    String   @unique
+  age         Int
+  kind        String
+  title       String
+  description String
+  optionsJson String
+  createdAt   DateTime @default(now())
+
+  career PlayerCareer @relation(fields: [careerId], references: [id], onDelete: Cascade)
+}
