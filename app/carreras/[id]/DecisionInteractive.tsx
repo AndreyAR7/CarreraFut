@@ -26,8 +26,15 @@ export interface EventOptionPayload {
 }
 
 export type DecisionState =
-  | { type: "offer"; title: string; description: string; options: ClubOfferOption[] }
-  | { type: "event"; title: string; description: string; category: EventCategory; options: EventOptionPayload[] }
+  | { type: "offer"; title: string; description: string; age: number; options: ClubOfferOption[] }
+  | {
+      type: "event";
+      title: string;
+      description: string;
+      age: number;
+      category: EventCategory;
+      options: EventOptionPayload[];
+    }
   | { type: "none" };
 
 const CATEGORY_ICONS: Record<EventCategory, string> = {
@@ -104,6 +111,7 @@ function OutcomeChip({
 function DecisionShell({
   banner,
   badge,
+  age,
   title,
   description,
   hint,
@@ -111,6 +119,7 @@ function DecisionShell({
 }: {
   banner: React.ReactNode;
   badge: React.ReactNode;
+  age: number;
   title: string;
   description: string;
   hint: string;
@@ -122,11 +131,16 @@ function DecisionShell({
         {banner}
         <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
         <div className="absolute left-4 top-3">{badge}</div>
+        <span className="absolute right-4 top-3 rounded-full bg-black/40 px-3 py-1 text-xs font-semibold text-white backdrop-blur">
+          🎂 {age} años
+        </span>
         <h2 className="absolute inset-x-4 bottom-3 text-lg font-extrabold text-white drop-shadow">{title}</h2>
       </div>
       <div className="p-5">
-        <p className="text-sm text-muted">{description}</p>
-        <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-accent">👉 {hint}</p>
+        <div className="rounded-xl border-l-4 border-accent bg-surface-alt px-4 py-3">
+          <p className="text-[15px] font-semibold leading-snug text-foreground">{description}</p>
+        </div>
+        <p className="mt-3 flex items-center gap-1.5 text-xs font-medium text-muted">👉 {hint}</p>
         <div className="mt-5 flex flex-col gap-3">{children}</div>
       </div>
     </div>
@@ -244,6 +258,7 @@ export function DecisionInteractive({ careerId, state }: { careerId: string; sta
             📋 Decisión de club
           </span>
         }
+        age={display.age}
         title={display.title}
         description={display.description}
         hint="Un clic define tu elección y arranca la próxima temporada."
@@ -303,6 +318,7 @@ export function DecisionInteractive({ careerId, state }: { careerId: string; sta
             {CATEGORY_ICONS[category]} {EVENT_CATEGORY_LABELS[category]}
           </span>
         }
+        age={display.age}
         title={display.title}
         description={display.description}
         hint={phase === "revealed" ? "Mirá cómo salió y seguí cuando quieras." : "Un clic resuelve la decisión."}

@@ -54,25 +54,27 @@ export async function createCareerAction(
   redirect(`/carreras/${career.id}`);
 }
 
+// These three are always followed by a client-side window.location.reload() (see
+// DecisionInteractive.tsx), which is a hard navigation that never consults Next's router cache —
+// so they don't need revalidatePath to show fresh data. Calling it anyway used to trigger Next's
+// automatic mid-action RSC patch, which updated the page (celebration modal included) the instant
+// the action resolved, well before the client's own reveal animation had finished playing.
 export async function resolveClubOfferAction(careerId: string, optionKey: string) {
   const user = await requireUser();
   await resolveClubOffer(careerId, user.id, optionKey);
   await advanceSeason(careerId, user.id);
-  revalidatePath(`/carreras/${careerId}`);
 }
 
 export async function resolveEventAction(careerId: string, optionKey: string) {
   const user = await requireUser();
   const outcome = await resolveEvent(careerId, user.id, optionKey);
   await advanceSeason(careerId, user.id);
-  revalidatePath(`/carreras/${careerId}`);
   return outcome;
 }
 
 export async function advanceSeasonAction(careerId: string) {
   const user = await requireUser();
   await advanceSeason(careerId, user.id);
-  revalidatePath(`/carreras/${careerId}`);
 }
 
 export async function clearCelebrationAction(careerId: string) {

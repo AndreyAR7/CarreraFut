@@ -13,6 +13,7 @@ export function DecisionPanel({ career }: { career: CareerDetail }) {
       type: "offer",
       title: career.pendingOffer.title,
       description: career.pendingOffer.description,
+      age: career.age,
       options,
     };
   } else if (career.pendingEvent) {
@@ -23,6 +24,7 @@ export function DecisionPanel({ career }: { career: CareerDetail }) {
       type: "event",
       title: career.pendingEvent.title,
       description: career.pendingEvent.description,
+      age: career.age,
       category,
       options,
     };

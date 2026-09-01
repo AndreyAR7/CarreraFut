@@ -193,14 +193,17 @@ async function generateTransferOffer(
   nationalityId: string,
   domesticOnly: boolean,
   allowEurope: boolean,
+  opts: { decline?: boolean } = {},
 ) {
+  const decline = opts.decline ?? false;
   const currentClub = await prisma.club.findUniqueOrThrow({ where: { id: currentClubId } });
   const targetBand = Math.max(1, Math.min(5, Math.round(overall / 20)));
   // Most transfer offers are a step up rather than sideways/down — a career should feel like it's
-  // building toward something. Occasionally allow a band-down option too, for realism.
-  const biasUp = Math.random() < 0.7;
-  const minBand = biasUp ? targetBand : Math.max(1, targetBand - 1);
-  const maxBand = Math.min(5, targetBand + 1);
+  // building toward something. Occasionally allow a band-down option too, for realism. A decline
+  // offer flips this: every option is a step DOWN, steering a veteran toward the exit instead.
+  const biasUp = !decline && Math.random() < 0.7;
+  const minBand = decline ? 1 : biasUp ? targetBand : Math.max(1, targetBand - 1);
+  const maxBand = decline ? Math.max(1, targetBand - 1) : Math.min(5, targetBand + 1);
   const candidates = await findClubCandidates({
     excludeClubIds: [currentClubId],
     minReputation: minBand,
@@ -228,26 +231,32 @@ async function generateTransferOffer(
     countryCode: club.country.code,
     reputation: club.reputation,
     clearsLoan: true,
-    marketValueMultiplier: 1.08,
-    starterShareSet: 0.6,
+    marketValueMultiplier: decline ? 0.85 : 1.08,
+    starterShareSet: decline ? 0.7 : 0.6,
   }));
-  options.push({
-    optionKey: "transfer_stay",
-    label: `Quedarte en ${currentClub.name}`,
-    description: "Rechazás las ofertas y seguís en tu club actual.",
-    clubId: null,
-    moraleDelta: 3,
-  });
+  // A decline move is presented as the only path forward — no "stay at the big club" escape
+  // hatch, since the whole point is to force the career toward its natural end back home.
+  if (!decline) {
+    options.push({
+      optionKey: "transfer_stay",
+      label: `Quedarte en ${currentClub.name}`,
+      description: "Rechazás las ofertas y seguís en tu club actual.",
+      clubId: null,
+      moraleDelta: 3,
+    });
+  }
 
   await prisma.pendingClubOffer.create({
     data: {
       careerId,
       age,
       kind: "TRANSFER" satisfies ClubOfferKind,
-      title: includesEuropeanOffer ? "¡Ofertas desde Europa!" : "Mercado de pases",
-      description: includesEuropeanOffer
-        ? "Tu nombre llegó a Europa, donde se mueve la plata grande del fútbol. Elegí bien tu próximo paso."
-        : "Llegaron ofertas de otros clubes. Podés aceptar una o quedarte.",
+      title: decline ? "El final se acerca" : includesEuropeanOffer ? "¡Ofertas desde Europa!" : "Mercado de pases",
+      description: decline
+        ? `A tu edad, ${currentClub.name} ya piensa en el recambio. Es momento de volver a un club más tranquilo, cerca de casa.`
+        : includesEuropeanOffer
+          ? "Tu nombre llegó a Europa, donde se mueve la plata grande del fútbol. Elegí bien tu próximo paso."
+          : "Llegaron ofertas de otros clubes. Podés aceptar una o quedarte.",
       optionsJson: JSON.stringify(options),
     },
   });
@@ -543,6 +552,23 @@ function retirementChance(age: number): number {
   return Math.min(0.75, (age - (RETIREMENT_MIN_AGE - 1)) * 0.09);
 }
 
+// A whole career should realistically land at most a couple of each individual award — after the
+// cap the chance is hard-zeroed, and even before that each prior win quarters the odds again.
+const MAX_CAREER_WINS_PER_INDIVIDUAL_AWARD = 2;
+
+function individualAwardChance(baseChance: number, priorWins: number): number {
+  if (priorWins >= MAX_CAREER_WINS_PER_INDIVIDUAL_AWARD) return 0;
+  return baseChance / (priorWins + 1) ** 2;
+}
+
+// Big clubs (European giants especially) don't keep 35+ year olds around — past this age the
+// career is steered toward a decline move, usually back to the player's own country, instead of
+// staying indefinitely at a top club until the random retirement roll eventually lands.
+const VETERAN_DECLINE_AGE = 35;
+// A trophy at a young age is exactly the kind of breakout that gets scouted abroad — bypass the
+// usual overall gate and lean much harder into a transfer offer that season.
+const RISING_TALENT_MAX_AGE = 25;
+
 export async function advanceSeason(careerId: string, userId: string) {
   let career = await prisma.playerCareer.findFirstOrThrow({
     where: { id: careerId, userId },
@@ -562,6 +588,20 @@ export async function advanceSeason(careerId: string, userId: string) {
 
   const seasonsPerDecision = DIFFICULTY_INFO[career.difficulty as Difficulty].seasonsPerDecision;
   const celebrations: { name: string; tier: string }[] = [];
+
+  // Individual awards should feel like the 1-2 "dream moments" of a whole career, not a yearly
+  // coin flip — track how many of each the player already has (seeded once here, then updated
+  // in-memory as more are won across this batch) so the odds decay hard after the first one and
+  // hit zero at the cap, instead of accumulating indefinitely over a 15-20 season career.
+  const priorIndividualTrophies = await prisma.trophy.findMany({
+    where: { careerId, tier: "INDIVIDUAL" },
+    select: { name: true },
+  });
+  const awardCounts = {
+    GOLDEN_BOOT: priorIndividualTrophies.filter((t) => t.name.startsWith(INDIVIDUAL_AWARDS.GOLDEN_BOOT)).length,
+    BALLON_DOR: priorIndividualTrophies.filter((t) => t.name.startsWith(INDIVIDUAL_AWARDS.BALLON_DOR)).length,
+    PUSKAS: priorIndividualTrophies.filter((t) => t.name.startsWith(INDIVIDUAL_AWARDS.PUSKAS)).length,
+  };
 
   for (let i = 0; i < seasonsPerDecision; i++) {
     career = await prisma.playerCareer.findFirstOrThrow({
@@ -649,26 +689,31 @@ export async function advanceSeason(careerId: string, userId: string) {
     if (ntResult.wonMajorTournament) celebrations.push({ name: `Mundial (${career.nationality.name})`, tier: "WORLD" });
 
     // Rare individual awards — low-probability "dream" moments that reward an outstanding
-    // season rather than firing every year, so landing one actually feels special.
+    // season rather than firing every year, so landing one actually feels special. Each one also
+    // decays hard after a prior win and stops entirely past MAX_CAREER_WINS_PER_INDIVIDUAL_AWARD,
+    // so a whole career realistically lands at most a couple of each — not a handful.
     const wonMajorTeamTrophy = result.leagueTitleWon || result.continentalTitleWon || ntResult.wonMajorTournament;
     const goldenBootChance =
-      result.goals >= 18 ? Math.max(0, Math.min(0.35, (result.goals - 15) * 0.02 + (nextOverall - 70) / 300)) : 0;
+      result.goals >= 20 ? Math.max(0, Math.min(0.18, (result.goals - 18) * 0.015 + (nextOverall - 75) / 400)) : 0;
     const ballonDorChance =
-      nextOverall >= 85 && wonMajorTeamTrophy ? Math.max(0, Math.min(0.15, (nextOverall - 85) * 0.02 + 0.03)) : 0;
-    const puskasChance = result.goals > 0 ? 0.04 : 0;
+      nextOverall >= 88 && wonMajorTeamTrophy ? Math.max(0, Math.min(0.08, (nextOverall - 88) * 0.015 + 0.02)) : 0;
+    const puskasChance = result.goals >= 8 ? 0.015 : 0;
 
-    const wonGoldenBoot = Math.random() < goldenBootChance;
-    const wonBallonDor = Math.random() < ballonDorChance;
-    const wonPuskas = Math.random() < puskasChance;
+    const wonGoldenBoot = Math.random() < individualAwardChance(goldenBootChance, awardCounts.GOLDEN_BOOT);
+    const wonBallonDor = Math.random() < individualAwardChance(ballonDorChance, awardCounts.BALLON_DOR);
+    const wonPuskas = Math.random() < individualAwardChance(puskasChance, awardCounts.PUSKAS);
 
     if (wonGoldenBoot) {
       celebrations.push({ name: `${INDIVIDUAL_AWARDS.GOLDEN_BOOT} — ${career.currentClub.league.name}`, tier: "INDIVIDUAL" });
+      awardCounts.GOLDEN_BOOT += 1;
     }
     if (wonBallonDor) {
       celebrations.push({ name: INDIVIDUAL_AWARDS.BALLON_DOR, tier: "INDIVIDUAL" });
+      awardCounts.BALLON_DOR += 1;
     }
     if (wonPuskas) {
       celebrations.push({ name: INDIVIDUAL_AWARDS.PUSKAS, tier: "INDIVIDUAL" });
+      awardCounts.PUSKAS += 1;
     }
 
     await prisma.$transaction([
@@ -846,13 +891,43 @@ export async function advanceSeason(careerId: string, userId: string) {
   }
 
   const priorTransitions = await countClubTransitions(careerId);
-  const domesticOnly = priorTransitions < DOMESTIC_ONLY_TRANSITIONS;
-  const allowEurope = finalCareer.overall >= EUROPE_OVERALL_THRESHOLD;
+  let domesticOnly = priorTransitions < DOMESTIC_ONLY_TRANSITIONS;
+  let allowEurope = finalCareer.overall >= EUROPE_OVERALL_THRESHOLD;
+
+  // A trophy at a young age is a breakout season — it should open Europe's door even before the
+  // usual overall threshold, and make a transfer noticeably more likely to come calling at all.
+  const isRisingTalent = finalCareer.age <= RISING_TALENT_MAX_AGE && celebrations.length > 0;
+  if (isRisingTalent) {
+    allowEurope = true;
+    domesticOnly = false;
+  }
+
+  // Past VETERAN_DECLINE_AGE, a top club (abroad or a big reputation club at home) doesn't hang
+  // on to the player — force a decline move back toward home before the normal random roll even
+  // gets a chance, so the career visibly winds down instead of coasting at the top indefinitely.
+  const isVeteran = finalCareer.age > VETERAN_DECLINE_AGE;
+  const stillAtTopClub =
+    finalCareer.currentClub.countryId !== finalCareer.nationalityId || finalCareer.currentClub.reputation > 2;
+  if (isVeteran && stillAtTopClub) {
+    const created = await generateTransferOffer(
+      careerId,
+      finalCareer.age,
+      finalCareer.currentClubId,
+      finalCareer.overall,
+      finalCareer.nationalityId,
+      true,
+      false,
+      { decline: true },
+    );
+    if (created) return;
+  }
 
   // Transfer/loan chances raised from the original 16%/12% — clubs come calling noticeably more
-  // often, so the career keeps moving instead of stalling out at one team for ages.
+  // often, so the career keeps moving instead of stalling out at one team for ages. A young
+  // breakout season raises the transfer chance further still.
+  const transferChance = isRisingTalent ? 0.55 : 0.28;
   const roll = Math.random();
-  if (roll < 0.28) {
+  if (roll < transferChance) {
     const created = await generateTransferOffer(
       careerId,
       finalCareer.age,
@@ -864,7 +939,7 @@ export async function advanceSeason(careerId: string, userId: string) {
     );
     if (created) return;
   } else if (
-    roll < 0.46 &&
+    roll < transferChance + 0.18 &&
     finalCareer.overall < finalCareer.currentClub.reputation * 18 + 15
   ) {
     const created = await generateLoanOutOffer(
