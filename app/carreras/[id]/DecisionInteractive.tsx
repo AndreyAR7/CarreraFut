@@ -58,6 +58,10 @@ const SHOOTOUT_OUTCOME_KIND: Record<string, ShootoutOutcomeKind> = {
   atajada: "SAVED",
   afuera: "MISSED",
 };
+// A direct-kick option's zone is the player's own choice, not something to randomize — clicking
+// "Rematar a la izquierda" IS aiming left, so the goal-zone animation just confirms that pick
+// instead of cycling through zones first.
+const ZONE_INDEX_BY_KEY: Record<string, number> = { izquierda: 0, centro: 1, derecha: 2 };
 
 const TONE_STYLES: Record<EffectTone, string> = {
   positive: "border-accent/40 bg-accent/12 text-accent",
@@ -236,9 +240,15 @@ export function DecisionInteractive({ careerId, state }: { careerId: string; sta
     setResult(null);
 
     const isShootout = SHOOTOUT_EVENT_KEYS.has(state.eventKey);
-    const n = isShootout ? 3 : Math.max(1, option.outcomes.length);
-    setPhase(n > 1 ? "spinning" : "busy");
-    setSpinIndex(0);
+    // Picking a corner IS the decision — the zone comes straight from which button was clicked,
+    // never from randomness. Only a "let a teammate take it" pick still gets a randomized zone,
+    // since that shot genuinely isn't the player's to aim.
+    const isDirectKick = isShootout && option.key in ZONE_INDEX_BY_KEY;
+    const isTeammateShot = isShootout && !isDirectKick && option.outcomes.length > 1;
+    const willSpin = isDirectKick || isTeammateShot || option.outcomes.length > 1;
+
+    setPhase(willSpin ? "spinning" : "busy");
+    setSpinIndex(isDirectKick ? ZONE_INDEX_BY_KEY[option.key] : 0);
 
     let resolved;
     try {
@@ -250,14 +260,16 @@ export function DecisionInteractive({ careerId, state }: { careerId: string; sta
     }
     if (!aliveRef.current) return;
 
-    // A shootout's goal-zone animation is purely decorative and picked independently of the
-    // outcome, so it doesn't just always aim left for a goal / center for a save; every other
-    // event still lands the spin on the real outcome's chip so the highlight matches the result.
-    const targetIndex = isShootout
-      ? pickShotZone()
-      : Math.max(0, option.outcomes.findIndex((o) => o.id === resolved.outcomeId));
-    if (n > 1) {
-      await spinToIndex(n, targetIndex, (idx) => aliveRef.current && setSpinIndex(idx), () => aliveRef.current);
+    if (isDirectKick) {
+      // Zone is already fixed from the click — just a short suspense beat before the reveal.
+      await sleep(1300);
+      if (!aliveRef.current) return;
+    } else if (isTeammateShot) {
+      await spinToIndex(3, pickShotZone(), (idx) => aliveRef.current && setSpinIndex(idx), () => aliveRef.current);
+      if (!aliveRef.current) return;
+    } else if (option.outcomes.length > 1) {
+      const targetIndex = Math.max(0, option.outcomes.findIndex((o) => o.id === resolved.outcomeId));
+      await spinToIndex(option.outcomes.length, targetIndex, (idx) => aliveRef.current && setSpinIndex(idx), () => aliveRef.current);
       if (!aliveRef.current) return;
     }
 

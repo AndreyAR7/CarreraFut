@@ -14,26 +14,76 @@ export const EVENTS: EventDefinition[] = [
     weight: 0,
     options: [
       {
-        key: "patear",
-        label: "Pedir patear",
-        description: "Te la jugás por tu selección: si la metés, sos la gran figura; si fallás, cargás con todo.",
+        key: "izquierda",
+        label: "⬅️ Rematar a la izquierda",
+        description: "Buscás el palo izquierdo: más difícil de alcanzar para el arquero, pero también más fácil de errar.",
         outcomes: [
           {
             id: "gol",
-            chance: 0.5,
-            summary: "¡La clavaste! Tu selección se consagra campeona del mundo y sos la figura del partido.",
+            chance: 0.55,
+            summary: "¡La clavaste en el palo izquierdo! Tu selección se consagra campeona del mundo y sos la figura del partido.",
             effects: { reputationDelta: 25, marketValueMultiplier: 1.15, moraleDelta: 15, awardsWorldCup: true },
           },
           {
             id: "atajada",
-            chance: 0.3,
-            summary: "El arquero rival te la adivinó. Tu selección quedó eliminada y el golpe te pesa en la reputación.",
+            chance: 0.2,
+            summary: "El arquero rival se estiró entero y te la adivinó. Tu selección quedó eliminada y el golpe te pesa en la reputación.",
             effects: { reputationDelta: -20, moraleDelta: -15 },
           },
           {
             id: "afuera",
+            chance: 0.25,
+            summary: "La tiraste afuera, por izquierda. Tu selección quedó eliminada y te vas a cargar ese fallo un buen tiempo.",
+            effects: { reputationDelta: -22, moraleDelta: -17 },
+          },
+        ],
+      },
+      {
+        key: "centro",
+        label: "⬆️ Rematar al centro",
+        description: "Vas al medio: rara vez se te va afuera, pero es más fácil que el arquero se quede parado y la ataje.",
+        outcomes: [
+          {
+            id: "gol",
+            chance: 0.45,
+            summary: "¡La clavaste al medio! Tu selección se consagra campeona del mundo y sos la figura del partido.",
+            effects: { reputationDelta: 25, marketValueMultiplier: 1.15, moraleDelta: 15, awardsWorldCup: true },
+          },
+          {
+            id: "atajada",
+            chance: 0.4,
+            summary: "El arquero ni se movió, se quedó parado y te la atajó. Tu selección quedó eliminada y el golpe te pesa en la reputación.",
+            effects: { reputationDelta: -20, moraleDelta: -15 },
+          },
+          {
+            id: "afuera",
+            chance: 0.15,
+            summary: "La tiraste afuera por el medio. Tu selección quedó eliminada y te vas a cargar ese fallo un buen tiempo.",
+            effects: { reputationDelta: -22, moraleDelta: -17 },
+          },
+        ],
+      },
+      {
+        key: "derecha",
+        label: "➡️ Rematar a la derecha",
+        description: "Buscás el palo derecho: más difícil de alcanzar para el arquero, pero también más fácil de errar.",
+        outcomes: [
+          {
+            id: "gol",
+            chance: 0.55,
+            summary: "¡La clavaste en el palo derecho! Tu selección se consagra campeona del mundo y sos la figura del partido.",
+            effects: { reputationDelta: 25, marketValueMultiplier: 1.15, moraleDelta: 15, awardsWorldCup: true },
+          },
+          {
+            id: "atajada",
             chance: 0.2,
-            summary: "La tiraste afuera. Tu selección quedó eliminada y te vas a cargar ese fallo un buen tiempo.",
+            summary: "El arquero rival se estiró entero y te la adivinó. Tu selección quedó eliminada y el golpe te pesa en la reputación.",
+            effects: { reputationDelta: -20, moraleDelta: -15 },
+          },
+          {
+            id: "afuera",
+            chance: 0.25,
+            summary: "La tiraste afuera, por derecha. Tu selección quedó eliminada y te vas a cargar ese fallo un buen tiempo.",
             effects: { reputationDelta: -22, moraleDelta: -17 },
           },
         ],
@@ -78,26 +128,76 @@ export const EVENTS: EventDefinition[] = [
     weight: 0,
     options: [
       {
-        key: "patear",
-        label: "Pedir patear",
-        description: "Te la jugás por tu equipo: si la metés, sos el héroe de la final; si fallás, cargás con todo.",
+        key: "izquierda",
+        label: "⬅️ Rematar a la izquierda",
+        description: "Buscás el palo izquierdo: más difícil de alcanzar para el arquero, pero también más fácil de errar.",
         outcomes: [
           {
             id: "gol",
-            chance: 0.5,
-            summary: "¡La clavaste! Tu equipo se consagra campeón y sos la gran figura de la final.",
+            chance: 0.55,
+            summary: "¡La clavaste en el palo izquierdo! Tu equipo se consagra campeón y sos la gran figura de la final.",
             effects: { reputationDelta: 20, marketValueMultiplier: 1.12, moraleDelta: 14, awardsContinentalTitle: true },
           },
           {
             id: "atajada",
-            chance: 0.3,
-            summary: "El arquero rival te la adivinó. Tu equipo se queda sin el título y el golpe te pesa.",
+            chance: 0.2,
+            summary: "El arquero rival se estiró entero y te la adivinó. Tu equipo se queda sin el título y el golpe te pesa.",
             effects: { reputationDelta: -16, moraleDelta: -14 },
           },
           {
             id: "afuera",
+            chance: 0.25,
+            summary: "La tiraste afuera, por izquierda. Tu equipo se queda sin el título en la peor forma posible.",
+            effects: { reputationDelta: -18, moraleDelta: -16 },
+          },
+        ],
+      },
+      {
+        key: "centro",
+        label: "⬆️ Rematar al centro",
+        description: "Vas al medio: rara vez se te va afuera, pero es más fácil que el arquero se quede parado y la ataje.",
+        outcomes: [
+          {
+            id: "gol",
+            chance: 0.45,
+            summary: "¡La clavaste al medio! Tu equipo se consagra campeón y sos la gran figura de la final.",
+            effects: { reputationDelta: 20, marketValueMultiplier: 1.12, moraleDelta: 14, awardsContinentalTitle: true },
+          },
+          {
+            id: "atajada",
+            chance: 0.4,
+            summary: "El arquero ni se movió, se quedó parado y te la atajó. Tu equipo se queda sin el título y el golpe te pesa.",
+            effects: { reputationDelta: -16, moraleDelta: -14 },
+          },
+          {
+            id: "afuera",
+            chance: 0.15,
+            summary: "La tiraste afuera por el medio. Tu equipo se queda sin el título en la peor forma posible.",
+            effects: { reputationDelta: -18, moraleDelta: -16 },
+          },
+        ],
+      },
+      {
+        key: "derecha",
+        label: "➡️ Rematar a la derecha",
+        description: "Buscás el palo derecho: más difícil de alcanzar para el arquero, pero también más fácil de errar.",
+        outcomes: [
+          {
+            id: "gol",
+            chance: 0.55,
+            summary: "¡La clavaste en el palo derecho! Tu equipo se consagra campeón y sos la gran figura de la final.",
+            effects: { reputationDelta: 20, marketValueMultiplier: 1.12, moraleDelta: 14, awardsContinentalTitle: true },
+          },
+          {
+            id: "atajada",
             chance: 0.2,
-            summary: "La tiraste afuera. Tu equipo se queda sin el título en la peor forma posible.",
+            summary: "El arquero rival se estiró entero y te la adivinó. Tu equipo se queda sin el título y el golpe te pesa.",
+            effects: { reputationDelta: -16, moraleDelta: -14 },
+          },
+          {
+            id: "afuera",
+            chance: 0.25,
+            summary: "La tiraste afuera, por derecha. Tu equipo se queda sin el título en la peor forma posible.",
             effects: { reputationDelta: -18, moraleDelta: -16 },
           },
         ],
@@ -142,26 +242,76 @@ export const EVENTS: EventDefinition[] = [
     weight: 0,
     options: [
       {
-        key: "arriesgar",
-        label: "Pedir patear y mostrarte",
-        description: "Te jugás el momento frente a los ojeadores: si la metés, te vas a un club mejor ya mismo.",
+        key: "izquierda",
+        label: "⬅️ Rematar a la izquierda",
+        description: "Buscás el palo izquierdo frente a los ojeadores: si la metés, te vas a un club mejor ya mismo.",
         outcomes: [
           {
             id: "gol",
-            chance: 0.45,
-            summary: "¡La clavaste con los ojeadores mirando! Un club más grande decide ficharte de inmediato.",
+            chance: 0.5,
+            summary: "¡La clavaste en el palo izquierdo con los ojeadores mirando! Un club más grande decide ficharte de inmediato.",
             effects: { reputationDelta: 12, marketValueMultiplier: 1.1, moraleDelta: 10, promotesToBetterClub: true },
           },
           {
             id: "atajada",
-            chance: 0.3,
-            summary: "El arquero te la adivinó justo frente a los ojeadores. Se enfriaron y no pasó nada más.",
+            chance: 0.22,
+            summary: "El arquero se estiró entero justo frente a los ojeadores. Se enfriaron y no pasó nada más.",
             effects: { moraleDelta: -5 },
           },
           {
             id: "afuera",
-            chance: 0.25,
-            summary: "La tiraste afuera con los ojeadores mirando. La oportunidad se esfumó.",
+            chance: 0.28,
+            summary: "La tiraste afuera, por izquierda, con los ojeadores mirando. La oportunidad se esfumó.",
+            effects: { moraleDelta: -6 },
+          },
+        ],
+      },
+      {
+        key: "centro",
+        label: "⬆️ Rematar al centro",
+        description: "Vas al medio frente a los ojeadores: rara vez se va afuera, pero el arquero puede quedarse parado y atajarla.",
+        outcomes: [
+          {
+            id: "gol",
+            chance: 0.4,
+            summary: "¡La clavaste al medio con los ojeadores mirando! Un club más grande decide ficharte de inmediato.",
+            effects: { reputationDelta: 12, marketValueMultiplier: 1.1, moraleDelta: 10, promotesToBetterClub: true },
+          },
+          {
+            id: "atajada",
+            chance: 0.42,
+            summary: "El arquero ni se movió y te la atajó justo frente a los ojeadores. Se enfriaron y no pasó nada más.",
+            effects: { moraleDelta: -5 },
+          },
+          {
+            id: "afuera",
+            chance: 0.18,
+            summary: "La tiraste afuera por el medio, con los ojeadores mirando. La oportunidad se esfumó.",
+            effects: { moraleDelta: -6 },
+          },
+        ],
+      },
+      {
+        key: "derecha",
+        label: "➡️ Rematar a la derecha",
+        description: "Buscás el palo derecho frente a los ojeadores: si la metés, te vas a un club mejor ya mismo.",
+        outcomes: [
+          {
+            id: "gol",
+            chance: 0.5,
+            summary: "¡La clavaste en el palo derecho con los ojeadores mirando! Un club más grande decide ficharte de inmediato.",
+            effects: { reputationDelta: 12, marketValueMultiplier: 1.1, moraleDelta: 10, promotesToBetterClub: true },
+          },
+          {
+            id: "atajada",
+            chance: 0.22,
+            summary: "El arquero se estiró entero justo frente a los ojeadores. Se enfriaron y no pasó nada más.",
+            effects: { moraleDelta: -5 },
+          },
+          {
+            id: "afuera",
+            chance: 0.28,
+            summary: "La tiraste afuera, por derecha, con los ojeadores mirando. La oportunidad se esfumó.",
             effects: { moraleDelta: -6 },
           },
         ],
