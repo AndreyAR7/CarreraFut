@@ -91,6 +91,20 @@ const THEME: Record<
       </g>
     ),
   },
+  // A decisive shootout moment — a goal frame silhouette instead of a category icon, since
+  // PenaltyShootout takes over the actual animation once the player picks an option.
+  CLUB: {
+    from: "#0c1b12",
+    to: "#15803d",
+    icon: () => (
+      <g stroke="rgba(255,255,255,0.92)" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" fill="none">
+        <path d="M22 30h56M26 30v28M74 30v28" />
+        <path d="M26 58h48" strokeWidth="2" opacity="0.5" />
+        <circle cx="50" cy="64" r="4.5" fill="rgba(255,255,255,0.85)" stroke="none" />
+        <path d="M30 34l8 6M38 34l-8 6M62 34l8 6M70 34l-8 6M46 34l4 6M54 34l-4 6" opacity="0.35" />
+      </g>
+    ),
+  },
 };
 
 export function EventIllustration({ category, className = "" }: { category: EventCategory; className?: string }) {

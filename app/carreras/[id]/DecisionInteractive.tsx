@@ -5,6 +5,7 @@ import { advanceSeasonAction, resolveClubOfferAction, resolveEventAction } from 
 import { ClubCrest } from "@/components/ClubCrest";
 import { EventIllustration } from "@/components/EventIllustration";
 import { Flag } from "@/components/Flag";
+import { PenaltyShootout, ShootoutOutcomeKind } from "@/components/PenaltyShootout";
 import { ClubOfferOption } from "@/lib/game/clubOffers";
 import { crestSrc } from "@/lib/game/data/crestFiles";
 import { EffectTone } from "@/lib/game/format";
@@ -33,6 +34,7 @@ export type DecisionState =
       description: string;
       age: number;
       category: EventCategory;
+      eventKey: string;
       options: EventOptionPayload[];
     }
   | { type: "none" };
@@ -45,6 +47,16 @@ const CATEGORY_ICONS: Record<EventCategory, string> = {
   MEDIA: "🎙️",
   SELECCION: "🎽",
   FINANZAS: "💰",
+  CLUB: "🥅",
+};
+
+// Events resolved with the goal-frame penalty animation instead of the generic outcome-chip
+// list — every outcome id across these events is one of GOAL/SAVED/MISSED below.
+const SHOOTOUT_EVENT_KEYS = new Set(["mundial_penales", "champions_penales", "fichaje_penales"]);
+const SHOOTOUT_OUTCOME_KIND: Record<string, ShootoutOutcomeKind> = {
+  gol: "GOAL",
+  atajada: "SAVED",
+  afuera: "MISSED",
 };
 
 const TONE_STYLES: Record<EffectTone, string> = {
@@ -84,6 +96,12 @@ async function spinToIndex(
     await sleep(90 + progress * progress * 260);
   }
   onTick(targetIndex);
+}
+
+// Which of the 3 goal zones (left/center/right) the shot animates toward — purely decorative, so
+// a plain random pick from an event-handler-called helper (not the component body) is fine.
+function pickShotZone(): number {
+  return Math.floor(Math.random() * 3);
 }
 
 function OutcomeChip({
@@ -211,13 +229,14 @@ export function DecisionInteractive({ careerId, state }: { careerId: string; sta
   }
 
   async function handleChooseEvent(option: EventOptionPayload) {
-    if (phase !== "idle") return;
+    if (phase !== "idle" || state.type !== "event") return;
     setError(null);
     setFrozen(state);
     setActiveKey(option.key);
     setResult(null);
 
-    const n = Math.max(1, option.outcomes.length);
+    const isShootout = SHOOTOUT_EVENT_KEYS.has(state.eventKey);
+    const n = isShootout ? 3 : Math.max(1, option.outcomes.length);
     setPhase(n > 1 ? "spinning" : "busy");
     setSpinIndex(0);
 
@@ -231,7 +250,12 @@ export function DecisionInteractive({ careerId, state }: { careerId: string; sta
     }
     if (!aliveRef.current) return;
 
-    const targetIndex = Math.max(0, option.outcomes.findIndex((o) => o.id === resolved.outcomeId));
+    // A shootout's goal-zone animation is purely decorative and picked independently of the
+    // outcome, so it doesn't just always aim left for a goal / center for a save; every other
+    // event still lands the spin on the real outcome's chip so the highlight matches the result.
+    const targetIndex = isShootout
+      ? pickShotZone()
+      : Math.max(0, option.outcomes.findIndex((o) => o.id === resolved.outcomeId));
     if (n > 1) {
       await spinToIndex(n, targetIndex, (idx) => aliveRef.current && setSpinIndex(idx), () => aliveRef.current);
       if (!aliveRef.current) return;
@@ -308,6 +332,7 @@ export function DecisionInteractive({ careerId, state }: { careerId: string; sta
 
   if (display.type === "event") {
     const category = display.category;
+    const isShootout = SHOOTOUT_EVENT_KEYS.has(display.eventKey);
     return (
       <>
       {errorBanner}
@@ -342,20 +367,37 @@ export function DecisionInteractive({ careerId, state }: { careerId: string; sta
                 <p className="text-base font-bold">{option.label}</p>
                 <p className="mt-0.5 text-xs text-muted">{option.description}</p>
               </button>
-              <div className="mt-3 flex flex-col gap-1.5">
-                {option.outcomes.map((outcome, idx) => (
-                  <OutcomeChip
-                    key={outcome.id}
-                    outcome={outcome}
-                    highlighted={isActive && ((phase === "spinning" && idx === spinIndex) || (phase === "revealed" && outcome.id === result?.outcomeId))}
-                    dimmed={isActive && phase === "revealed" && outcome.id !== result?.outcomeId}
-                  />
-                ))}
-              </div>
-              {isActive && phase === "spinning" && (
-                <p className="mt-3 text-xs font-semibold text-accent">
-                  <span className="spin-die inline-block">🎲</span> Definiendo la suerte…
-                </p>
+              {isShootout && option.outcomes.length > 1 ? (
+                isActive && phase !== "busy" ? (
+                  <div className="mt-3">
+                    <PenaltyShootout
+                      zone={spinIndex}
+                      phase={phase === "revealed" ? "revealed" : "spinning"}
+                      outcomeKind={result ? SHOOTOUT_OUTCOME_KIND[result.outcomeId] : undefined}
+                      label={phase === "revealed" ? "" : "Cobrando el penal…"}
+                    />
+                  </div>
+                ) : (
+                  <p className="mt-3 text-xs text-muted">🥅 Se define pateando al arco.</p>
+                )
+              ) : (
+                <>
+                  <div className="mt-3 flex flex-col gap-1.5">
+                    {option.outcomes.map((outcome, idx) => (
+                      <OutcomeChip
+                        key={outcome.id}
+                        outcome={outcome}
+                        highlighted={isActive && ((phase === "spinning" && idx === spinIndex) || (phase === "revealed" && outcome.id === result?.outcomeId))}
+                        dimmed={isActive && phase === "revealed" && outcome.id !== result?.outcomeId}
+                      />
+                    ))}
+                  </div>
+                  {isActive && phase === "spinning" && (
+                    <p className="mt-3 text-xs font-semibold text-accent">
+                      <span className="spin-die inline-block">🎲</span> Definiendo la suerte…
+                    </p>
+                  )}
+                </>
               )}
               {revealedHere && result && (
                 <>

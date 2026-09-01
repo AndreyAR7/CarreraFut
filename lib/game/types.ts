@@ -133,7 +133,8 @@ export type EventCategory =
   | "PERSONAL"
   | "MEDIA"
   | "SELECCION"
-  | "FINANZAS";
+  | "FINANZAS"
+  | "CLUB";
 
 export const EVENT_CATEGORY_LABELS: Record<EventCategory, string> = {
   DISCIPLINA: "Disciplina",
@@ -143,6 +144,7 @@ export const EVENT_CATEGORY_LABELS: Record<EventCategory, string> = {
   MEDIA: "Imagen y medios",
   SELECCION: "Selección nacional",
   FINANZAS: "Finanzas",
+  CLUB: "Definición decisiva",
 };
 
 export interface EventEffects {
@@ -156,6 +158,10 @@ export interface EventEffects {
   starterShareDelta?: number;
   /** Only used by the World Cup penalty-shootout decision — awards a WORLD trophy on resolution. */
   awardsWorldCup?: boolean;
+  /** Only used by the Champions League penalty-shootout decision — awards a CONTINENTAL trophy. */
+  awardsContinentalTitle?: boolean;
+  /** Only used by the signing-trial penalty-shootout decision — moves the player to a better club. */
+  promotesToBetterClub?: boolean;
 }
 
 export interface EventOutcome {

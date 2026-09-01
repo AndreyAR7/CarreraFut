@@ -448,7 +448,7 @@ export async function resolveEvent(
 ): Promise<ResolvedOutcome> {
   const career = await prisma.playerCareer.findFirstOrThrow({
     where: { id: careerId, userId },
-    include: { nationality: true },
+    include: { nationality: true, currentClub: { include: { league: true, country: true } } },
   });
   const pending = await prisma.pendingEvent.findUniqueOrThrow({ where: { careerId } });
   const event = getEventByKey(pending.eventKey);
@@ -486,6 +486,30 @@ export async function resolveEvent(
   const matchPenalty =
     (outcome.effects.suspensionMatches ?? 0) + Math.round((outcome.effects.injuryWeeks ?? 0) / 2);
   const wonWorldCup = Boolean(outcome.effects.awardsWorldCup);
+  const wonContinentalTitle = Boolean(outcome.effects.awardsContinentalTitle) && Boolean(career.currentClub);
+  const continentalCelebrationName = wonContinentalTitle
+    ? `${continentalTrophyName(career.currentClub!.country.code)} (${career.currentClub!.name})`
+    : null;
+
+  // A won signing-trial shootout moves the player to a better club immediately — same shape as
+  // a regular transfer, just auto-accepted since the player already "earned" it with the kick.
+  let promotionClub: Awaited<ReturnType<typeof prisma.club.findFirstOrThrow>> | null = null;
+  if (outcome.effects.promotesToBetterClub && career.currentClub) {
+    const candidates = await findClubCandidates({
+      excludeClubIds: [career.currentClub.id],
+      minReputation: Math.min(5, career.currentClub.reputation + 1),
+      maxReputation: 5,
+      domesticOnly: false,
+      nationalityId: career.nationalityId,
+      allowEurope: nextOverall >= EUROPE_OVERALL_THRESHOLD,
+      minCount: 1,
+    });
+    promotionClub = sampleN(candidates, 1)[0] ?? null;
+  }
+
+  const celebrationTrophies: { name: string; tier: string }[] = [];
+  if (wonWorldCup) celebrationTrophies.push({ name: `Mundial (${career.nationality.name})`, tier: "WORLD" });
+  if (wonContinentalTitle) celebrationTrophies.push({ name: continentalCelebrationName!, tier: "CONTINENTAL" });
 
   await prisma.$transaction([
     prisma.playerCareer.update({
@@ -497,15 +521,10 @@ export async function resolveEvent(
         fitness: nextFitness,
         starterShare: nextStarterShare,
         reputation: nextReputation,
-        marketValueEUR: nextMarketValue,
+        marketValueEUR: promotionClub ? Math.round(nextMarketValue * 1.1) : nextMarketValue,
         pendingMatchPenalty: career.pendingMatchPenalty + matchPenalty,
-        ...(wonWorldCup
-          ? {
-              celebrationJson: JSON.stringify({
-                trophies: [{ name: `Mundial (${career.nationality.name})`, tier: "WORLD" }],
-              }),
-            }
-          : {}),
+        ...(promotionClub ? { currentClubId: promotionClub.id, starterShare: 0.55 } : {}),
+        ...(celebrationTrophies.length > 0 ? { celebrationJson: JSON.stringify({ trophies: celebrationTrophies }) } : {}),
       },
     }),
     prisma.careerEventLog.create({
@@ -530,6 +549,19 @@ export async function resolveEvent(
               name: `Mundial (${career.nationality.name})`,
               tier: "WORLD",
               isNationalTeam: true,
+            },
+          }),
+        ]
+      : []),
+    ...(wonContinentalTitle
+      ? [
+          prisma.trophy.create({
+            data: {
+              careerId,
+              age: pending.age,
+              name: continentalCelebrationName!,
+              tier: "CONTINENTAL",
+              clubId: career.currentClubId,
             },
           }),
         ]
@@ -676,6 +708,25 @@ export async function advanceSeason(careerId: string, userId: string) {
       if (Math.random() < shootoutChance) {
         shootoutTriggered = true;
         ntResult = { ...ntResult, wonMajorTournament: false };
+      }
+    }
+
+    // Same idea for a continental final: only when the club run actually reached it, and only
+    // one decisive penalty moment per batch (a World Cup shootout already covers that drama).
+    let continentalShootoutTriggered = false;
+    if (
+      !retiring &&
+      !shootoutTriggered &&
+      playsContinental &&
+      (result.continentalResult === "FINAL" || result.continentalResult === "CAMPEON")
+    ) {
+      const continentalShootoutChance = decisiveShootoutChance({
+        overall,
+        countryFootballPower: career.currentClub.reputation,
+      });
+      if (Math.random() < continentalShootoutChance) {
+        continentalShootoutTriggered = true;
+        result.continentalTitleWon = false;
       }
     }
 
@@ -865,6 +916,27 @@ export async function advanceSeason(careerId: string, userId: string) {
       }
       return;
     }
+
+    if (continentalShootoutTriggered) {
+      const shootoutEvent = getEventByKey("champions_penales")!;
+      await prisma.pendingEvent.create({
+        data: {
+          careerId,
+          age: nextAge,
+          eventKey: shootoutEvent.key,
+          title: shootoutEvent.title,
+          description: shootoutEvent.description,
+          optionsJson: JSON.stringify(buildEventOptionsPayload(shootoutEvent)),
+        },
+      });
+      if (celebrations.length > 0) {
+        await prisma.playerCareer.update({
+          where: { id: careerId },
+          data: { celebrationJson: JSON.stringify({ trophies: celebrations }) },
+        });
+      }
+      return;
+    }
   }
 
   if (celebrations.length > 0) {
@@ -922,12 +994,42 @@ export async function advanceSeason(careerId: string, userId: string) {
     if (created) return;
   }
 
-  // Transfer/loan chances raised from the original 16%/12% — clubs come calling noticeably more
-  // often, so the career keeps moving instead of stalling out at one team for ages. A young
-  // breakout season raises the transfer chance further still.
-  const transferChance = isRisingTalent ? 0.55 : 0.28;
+  // Transfer/loan chances raised again — clubs come calling noticeably more often, so the career
+  // keeps moving instead of stalling out at one team for ages. A young breakout season raises the
+  // transfer chance further still.
+  const transferChance = isRisingTalent ? 0.6 : 0.34;
   const roll = Math.random();
   if (roll < transferChance) {
+    // Sometimes the move gets earned dramatically instead of just picked from a list: scouts are
+    // in the stands and a penalty in a friendly decides it. Only offered when a genuinely better
+    // club is actually available, and only for younger players (matches fichaje_penales's own
+    // narrative — a veteran isn't out there trying to impress scouts in a friendly).
+    if (finalCareer.age <= 33) {
+      const trialCandidates = await findClubCandidates({
+        excludeClubIds: [finalCareer.currentClubId],
+        minReputation: Math.min(5, finalCareer.currentClub.reputation + 1),
+        maxReputation: 5,
+        domesticOnly,
+        nationalityId: finalCareer.nationalityId,
+        allowEurope,
+        minCount: 1,
+      });
+      if (trialCandidates.length > 0 && Math.random() < 0.4) {
+        const trialEvent = getEventByKey("fichaje_penales")!;
+        await prisma.pendingEvent.create({
+          data: {
+            careerId,
+            age: finalCareer.age,
+            eventKey: trialEvent.key,
+            title: trialEvent.title,
+            description: trialEvent.description,
+            optionsJson: JSON.stringify(buildEventOptionsPayload(trialEvent)),
+          },
+        });
+        return;
+      }
+    }
+
     const created = await generateTransferOffer(
       careerId,
       finalCareer.age,
@@ -939,7 +1041,7 @@ export async function advanceSeason(careerId: string, userId: string) {
     );
     if (created) return;
   } else if (
-    roll < transferChance + 0.18 &&
+    roll < transferChance + 0.2 &&
     finalCareer.overall < finalCareer.currentClub.reputation * 18 + 15
   ) {
     const created = await generateLoanOutOffer(
@@ -957,7 +1059,7 @@ export async function advanceSeason(careerId: string, userId: string) {
   const isAbroad = finalCareer.currentClub.countryId !== finalCareer.nationalityId;
   const event = pickRandomEvent({
     age: finalCareer.age,
-    excludeKeys: ["mundial_penales"],
+    excludeKeys: ["mundial_penales", "champions_penales", "fichaje_penales"],
     isAbroad,
   });
   if (!event) return;

@@ -26,6 +26,7 @@ export function DecisionPanel({ career }: { career: CareerDetail }) {
       description: career.pendingEvent.description,
       age: career.age,
       category,
+      eventKey: career.pendingEvent.eventKey,
       options,
     };
   } else {

@@ -19,16 +19,22 @@ export const EVENTS: EventDefinition[] = [
         description: "Te la jugás por tu selección: si la metés, sos la gran figura; si fallás, cargás con todo.",
         outcomes: [
           {
-            id: "heroe",
+            id: "gol",
             chance: 0.5,
             summary: "¡La clavaste! Tu selección se consagra campeona del mundo y sos la figura del partido.",
             effects: { reputationDelta: 25, marketValueMultiplier: 1.15, moraleDelta: 15, awardsWorldCup: true },
           },
           {
-            id: "fallo",
-            chance: 0.5,
-            summary: "La erraste. Tu selección quedó eliminada y el golpe te pesa en la reputación.",
+            id: "atajada",
+            chance: 0.3,
+            summary: "El arquero rival te la adivinó. Tu selección quedó eliminada y el golpe te pesa en la reputación.",
             effects: { reputationDelta: -20, moraleDelta: -15 },
+          },
+          {
+            id: "afuera",
+            chance: 0.2,
+            summary: "La tiraste afuera. Tu selección quedó eliminada y te vas a cargar ese fallo un buen tiempo.",
+            effects: { reputationDelta: -22, moraleDelta: -17 },
           },
         ],
       },
@@ -38,16 +44,138 @@ export const EVENTS: EventDefinition[] = [
         description: "Preferís no cargar con la responsabilidad y dejás el resultado en manos de un compañero.",
         outcomes: [
           {
-            id: "gana_equipo",
+            id: "gol",
             chance: 0.5,
             summary: "Tu compañero convierte y la selección se consagra campeona del mundo.",
             effects: { reputationDelta: 4, moraleDelta: 5, awardsWorldCup: true },
           },
           {
-            id: "pierde_equipo",
-            chance: 0.5,
-            summary: "El equipo falla y quedan eliminados, aunque nadie te señala a vos.",
+            id: "atajada",
+            chance: 0.3,
+            summary: "Al arquero rival le adivinaron el remate. El equipo quedó eliminado, aunque nadie te señala a vos.",
             effects: { moraleDelta: -4 },
+          },
+          {
+            id: "afuera",
+            chance: 0.2,
+            summary: "Tu compañero la tiró afuera. El equipo quedó eliminado, aunque nadie te señala a vos.",
+            effects: { moraleDelta: -4 },
+          },
+        ],
+      },
+    ],
+  },
+  {
+    key: "champions_penales",
+    category: "CLUB",
+    title: "Definición por penales en la final continental",
+    description:
+      "La final se define desde los doce pasos. El capitán te mira: ¿pateás uno de los definitivos?",
+    minAge: 16,
+    maxAge: 41,
+    // weight: 0 — only ever triggered directly from advanceSeason() when a continental final
+    // comes down to a decisive shootout.
+    weight: 0,
+    options: [
+      {
+        key: "patear",
+        label: "Pedir patear",
+        description: "Te la jugás por tu equipo: si la metés, sos el héroe de la final; si fallás, cargás con todo.",
+        outcomes: [
+          {
+            id: "gol",
+            chance: 0.5,
+            summary: "¡La clavaste! Tu equipo se consagra campeón y sos la gran figura de la final.",
+            effects: { reputationDelta: 20, marketValueMultiplier: 1.12, moraleDelta: 14, awardsContinentalTitle: true },
+          },
+          {
+            id: "atajada",
+            chance: 0.3,
+            summary: "El arquero rival te la adivinó. Tu equipo se queda sin el título y el golpe te pesa.",
+            effects: { reputationDelta: -16, moraleDelta: -14 },
+          },
+          {
+            id: "afuera",
+            chance: 0.2,
+            summary: "La tiraste afuera. Tu equipo se queda sin el título en la peor forma posible.",
+            effects: { reputationDelta: -18, moraleDelta: -16 },
+          },
+        ],
+      },
+      {
+        key: "ceder",
+        label: "Dejar que patee otro",
+        description: "Preferís no cargar con la responsabilidad y dejás el resultado en manos de un compañero.",
+        outcomes: [
+          {
+            id: "gol",
+            chance: 0.5,
+            summary: "Tu compañero convierte y el equipo se consagra campeón.",
+            effects: { reputationDelta: 3, moraleDelta: 5, awardsContinentalTitle: true },
+          },
+          {
+            id: "atajada",
+            chance: 0.3,
+            summary: "Al arquero rival le adivinaron el remate. El equipo se queda sin el título, aunque nadie te señala a vos.",
+            effects: { moraleDelta: -3 },
+          },
+          {
+            id: "afuera",
+            chance: 0.2,
+            summary: "Tu compañero la tiró afuera. El equipo se queda sin el título, aunque nadie te señala a vos.",
+            effects: { moraleDelta: -3 },
+          },
+        ],
+      },
+    ],
+  },
+  {
+    key: "fichaje_penales",
+    category: "CLUB",
+    title: "Amistoso con ojeadores en la tribuna",
+    description:
+      "Ojeadores de un club más grande vinieron a verte jugar. El partido se define por penales: meter uno puede ser tu pasaporte a algo mejor.",
+    minAge: 16,
+    maxAge: 33,
+    // weight: 0 — only ever triggered directly from advanceSeason() as an alternative to a
+    // regular transfer offer, and only when a genuinely better club is available to jump to.
+    weight: 0,
+    options: [
+      {
+        key: "arriesgar",
+        label: "Pedir patear y mostrarte",
+        description: "Te jugás el momento frente a los ojeadores: si la metés, te vas a un club mejor ya mismo.",
+        outcomes: [
+          {
+            id: "gol",
+            chance: 0.45,
+            summary: "¡La clavaste con los ojeadores mirando! Un club más grande decide ficharte de inmediato.",
+            effects: { reputationDelta: 12, marketValueMultiplier: 1.1, moraleDelta: 10, promotesToBetterClub: true },
+          },
+          {
+            id: "atajada",
+            chance: 0.3,
+            summary: "El arquero te la adivinó justo frente a los ojeadores. Se enfriaron y no pasó nada más.",
+            effects: { moraleDelta: -5 },
+          },
+          {
+            id: "afuera",
+            chance: 0.25,
+            summary: "La tiraste afuera con los ojeadores mirando. La oportunidad se esfumó.",
+            effects: { moraleDelta: -6 },
+          },
+        ],
+      },
+      {
+        key: "seguro",
+        label: "Jugar seguro, sin arriesgar",
+        description: "Preferís no exponerte a un fallo público y dejás pasar el momento.",
+        outcomes: [
+          {
+            id: "sin_cambios",
+            chance: 1,
+            summary: "Jugaste correcto pero sin destacar. Los ojeadores se fueron sin definir nada.",
+            effects: { moraleDelta: 1 },
           },
         ],
       },
