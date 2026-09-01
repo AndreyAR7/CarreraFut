@@ -1,6 +1,7 @@
 import { useId } from "react";
 import { TrophyTier } from "@/lib/game/types";
 import { INDIVIDUAL_AWARDS } from "@/lib/game/data/awards";
+import { realTrophySrc } from "@/lib/game/data/trophyImages";
 
 // Real trophies (the actual Champions League cup, the World Cup, the Ballon d'Or gala statue,
 // etc.) are trademarked objects — actual product designs their owners license and litigate
@@ -194,6 +195,21 @@ export function TrophyIcon({
   const Shape = SHAPES[shapeKeyForAward(t, name)];
   const color = TIER_COLOR[t];
   const gradId = `${useId()}-trophy`;
+  const photoSrc = realTrophySrc(t, name);
+
+  if (photoSrc) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element -- small fixed-size icon, not worth next/image's overhead
+      <img
+        src={photoSrc}
+        alt={name ?? tier}
+        width={size}
+        height={size}
+        className={`shrink-0 object-contain ${className}`}
+        style={{ width: size, height: size }}
+      />
+    );
+  }
 
   return (
     <svg
