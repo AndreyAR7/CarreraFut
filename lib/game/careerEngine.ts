@@ -142,6 +142,12 @@ export async function createCareer(userId: string, input: CreateCareerInput) {
 // the player has already changed clubs, so the first few can be kept in their home country
 // (build a name locally before the world starts calling) and offers can lean toward upgrades.
 const CLUB_OFFER_KINDS: ClubOfferKind[] = ["CANTERA", "TRANSFER", "LOAN_OUT", "LOAN_RETURN"];
+
+// Decisive penalty-shootout decisions — resolveEventAction skips its usual automatic
+// advanceSeason() call for these (see app/actions/career.ts), because that immediate next-season
+// simulation could hand out an unrelated trophy in the very same reload a missed penalty shows
+// on, making it look like the shootout itself was won.
+export const SHOOTOUT_EVENT_KEYS = new Set(["mundial_penales", "champions_penales", "fichaje_penales"]);
 const DOMESTIC_ONLY_TRANSITIONS = 3;
 // Below this overall, European (UEFA) clubs simply aren't in the running yet — the career is
 // meant to read as "build your name across the Americas first, Europe is the payoff move."
@@ -1171,7 +1177,7 @@ export async function advanceSeason(careerId: string, userId: string) {
   const isAbroad = finalCareer.currentClub.countryId !== finalCareer.nationalityId;
   const event = pickRandomEvent({
     age: finalCareer.age,
-    excludeKeys: ["mundial_penales", "champions_penales", "fichaje_penales", "escandalo_dopaje_estalla", "escandalo_arreglo_estalla"],
+    excludeKeys: [...SHOOTOUT_EVENT_KEYS, "escandalo_dopaje_estalla", "escandalo_arreglo_estalla"],
     isAbroad,
     seenKeys,
   });
