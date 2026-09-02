@@ -804,11 +804,16 @@ export async function advanceSeason(careerId: string, userId: string) {
 
     const retiring = Math.random() < retirementChance(nextAge) || nextAge >= RETIREMENT_MAX_AGE;
 
+    // A goalkeeper doesn't realistically get asked "¿pateás uno de los definitivos?" — the
+    // shootout narrative (and its "ceder" escape hatch) is built around an outfield player's own
+    // choice to step up, not a keeper's. These 3 triggers just never fire for one.
+    const isGoalkeeper = career.position === "POR";
+
     // A shootout hands the outcome to the player instead of auto-resolving it — only on
     // seasons that aren't already ending in retirement, and it takes priority over the
     // regular end-of-batch club offer / narrative event.
     let shootoutTriggered = false;
-    if (!retiring && isMajorTournamentYear && ntResult.calledUp) {
+    if (!retiring && !isGoalkeeper && isMajorTournamentYear && ntResult.calledUp) {
       const shootoutChance = decisiveShootoutChance({
         overall,
         countryFootballPower: career.nationality.footballPower,
@@ -824,6 +829,7 @@ export async function advanceSeason(careerId: string, userId: string) {
     let continentalShootoutTriggered = false;
     if (
       !retiring &&
+      !isGoalkeeper &&
       !shootoutTriggered &&
       playsContinental &&
       (result.continentalResult === "FINAL" || result.continentalResult === "CAMPEON")
@@ -843,6 +849,7 @@ export async function advanceSeason(careerId: string, userId: string) {
     let cupShootoutTriggered = false;
     if (
       !retiring &&
+      !isGoalkeeper &&
       !shootoutTriggered &&
       !continentalShootoutTriggered &&
       (result.cupResult === "FINAL" || result.cupResult === "CAMPEON")
@@ -1218,9 +1225,10 @@ export async function advanceSeason(careerId: string, userId: string) {
   if (roll < transferChance) {
     // Sometimes the move gets earned dramatically instead of just picked from a list: scouts are
     // in the stands and a penalty in a friendly decides it. Only offered when a genuinely better
-    // club is actually available, and only for younger players (matches fichaje_penales's own
-    // narrative — a veteran isn't out there trying to impress scouts in a friendly).
-    if (finalCareer.age <= 33) {
+    // club is actually available, only for younger players (matches fichaje_penales's own
+    // narrative — a veteran isn't out there trying to impress scouts in a friendly), and never
+    // for a goalkeeper (same reasoning as the other 3 shootouts).
+    if (finalCareer.age <= 33 && finalCareer.position !== "POR") {
       const trialCandidates = await findClubCandidates({
         excludeClubIds: [finalCareer.currentClubId],
         minReputation: Math.min(5, finalCareer.currentClub.reputation + 1),
@@ -1292,6 +1300,7 @@ export async function advanceSeason(careerId: string, userId: string) {
     ],
     isAbroad,
     seenKeys,
+    position: finalCareer.position as Position,
   });
   if (!event) return;
 

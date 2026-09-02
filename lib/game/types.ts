@@ -199,4 +199,8 @@ export interface EventDefinition {
   options: EventOption[];
   /** Only eligible while playing for a club outside the player's home country. */
   requiresAbroad?: boolean;
+  /** Allow-list — if set, only these positions ever see this event (e.g. a goalkeeper-only one). */
+  positions?: Position[];
+  /** Deny-list — if set, these positions never see this event (e.g. no outfield-only shootout for a keeper). */
+  excludePositions?: Position[];
 }

@@ -12,6 +12,9 @@ export const EVENTS: EventDefinition[] = [
     // weight: 0 — never picked by the random end-of-season event roll. It's only ever
     // triggered directly from advanceSeason() when the national team hits a decisive shootout.
     weight: 0,
+    // A goalkeeper doesn't get asked to step up and take a decisive penalty — see the matching
+    // isGoalkeeper guard on this shootout's trigger in advanceSeason().
+    excludePositions: ["POR"],
     options: [
       {
         key: "izquierda",
@@ -126,6 +129,7 @@ export const EVENTS: EventDefinition[] = [
     // weight: 0 — only ever triggered directly from advanceSeason() when a continental final
     // comes down to a decisive shootout.
     weight: 0,
+    excludePositions: ["POR"],
     options: [
       {
         key: "izquierda",
@@ -240,6 +244,7 @@ export const EVENTS: EventDefinition[] = [
     // weight: 0 — only ever triggered directly from advanceSeason() when a domestic cup final
     // comes down to a decisive shootout.
     weight: 0,
+    excludePositions: ["POR"],
     options: [
       {
         key: "izquierda",
@@ -1180,6 +1185,201 @@ export const EVENTS: EventDefinition[] = [
     ],
   },
   {
+    key: "entrenador_arqueros_elite",
+    category: "ENTRENAMIENTO",
+    title: "Entrenador de arqueros de élite",
+    description: "Un ex arquero de selección se ofrece a trabajar tus reflejos y salidas de forma personalizada.",
+    minAge: 17,
+    maxAge: 33,
+    weight: 5,
+    positions: ["POR"],
+    options: [
+      {
+        key: "entrenar_arquero",
+        label: "Entrenar con él",
+        description: "Vas a exigirte al máximo en cada sesión para dar un salto de nivel.",
+        outcomes: [
+          {
+            id: "reflejos_mejoran",
+            chance: 0.55,
+            summary: "Tus reflejos y tus salidas dieron un salto notable.",
+            effects: { statDeltas: { defense: 2, mentality: 2 } },
+          },
+          {
+            id: "sobrecarga_arquero",
+            chance: 0.45,
+            summary: "La exigencia extra te pasó factura físicamente.",
+            effects: { fitnessDelta: -8, moraleDelta: -3 },
+          },
+        ],
+      },
+      {
+        key: "entrenamiento_habitual_arquero",
+        label: "Seguir con tu preparación habitual",
+        description: "Preferís no arriesgar tu rutina de siempre.",
+        outcomes: [
+          { id: "sin_cambios", chance: 1, summary: "Seguiste con tu preparación habitual, sin sobresaltos.", effects: {} },
+        ],
+      },
+    ],
+  },
+  {
+    key: "gol_agonico_arquero",
+    category: "PERSONAL",
+    title: "El córner desesperado",
+    description: "Último minuto, tu equipo necesita un gol y el técnico te pregunta si querés subir al ataque en el córner.",
+    minAge: 16,
+    maxAge: 38,
+    weight: 3,
+    positions: ["POR"],
+    options: [
+      {
+        key: "subir_al_ataque",
+        label: "Subir al ataque",
+        description: "Dejás el arco vacío por una última chance: si sale bien, sos una leyenda; si no, cargás con todo.",
+        outcomes: [
+          {
+            id: "gol_heroico",
+            chance: 0.15,
+            summary: "¡La clavaste de cabeza en el último segundo! El estadio explotó y quedaste en la historia del club.",
+            effects: { reputationDelta: 20, moraleDelta: 15, marketValueMultiplier: 1.06 },
+          },
+          {
+            id: "contragolpe_arquero",
+            chance: 0.85,
+            summary: "No llegaste a la jugada y el rival te contragolpeó con el arco vacío. La crítica fue durísima.",
+            effects: { reputationDelta: -15, moraleDelta: -10 },
+          },
+        ],
+      },
+      {
+        key: "quedarse_en_el_arco",
+        label: "Quedarte en el arco",
+        description: "Preferís no arriesgar semejante apuesta.",
+        outcomes: [
+          { id: "sin_cambios", chance: 1, summary: "Te quedaste en el arco, sin arriesgar nada.", effects: {} },
+        ],
+      },
+    ],
+  },
+  {
+    key: "presion_area_arquero",
+    category: "DISCIPLINA",
+    title: "Un error tuyo costó un gol",
+    description: "Una salida fallida tuya terminó en gol rival y la prensa te apunta con dureza.",
+    minAge: 17,
+    maxAge: 38,
+    weight: 5,
+    positions: ["POR"],
+    options: [
+      {
+        key: "pedir_seguir_titular",
+        label: "Pedir seguir siendo titular",
+        description: "Confiás en vos para dar vuelta la página rápido.",
+        outcomes: [
+          {
+            id: "recupera_confianza",
+            chance: 0.55,
+            summary: "Diste vuelta la página rápido y recuperaste la confianza del cuerpo técnico.",
+            effects: { statDeltas: { mentality: 2 }, moraleDelta: 5 },
+          },
+          {
+            id: "sigue_la_duda",
+            chance: 0.45,
+            summary: "La duda siguió instalada un tiempo más de lo que hubieras querido.",
+            effects: { moraleDelta: -6, reputationDelta: -3 },
+          },
+        ],
+      },
+      {
+        key: "pedir_descanso_arquero",
+        label: "Pedir unos partidos de descanso",
+        description: "Preferís bajar la presión mediática por un tiempo.",
+        outcomes: [
+          { id: "sin_cambios", chance: 1, summary: "Bajaste la presión mediática con unos partidos de descanso.", effects: {} },
+        ],
+      },
+    ],
+  },
+  {
+    key: "gol_cabeza_defensor",
+    category: "PERSONAL",
+    title: "El cabezazo salvador",
+    description: "En una pelota parada, quedaste solo en el área rival en el momento justo.",
+    minAge: 16,
+    maxAge: 38,
+    weight: 4,
+    positions: ["DFC", "LI", "LD"],
+    options: [
+      {
+        key: "ir_al_cabezazo",
+        label: "Ir con todo al cabezazo",
+        description: "Te jugás por el gol, dejando tu posición defensiva por unos segundos.",
+        outcomes: [
+          {
+            id: "cabezazo_gol",
+            chance: 0.5,
+            summary: "¡La clavaste de cabeza! Un gol inesperado de un defensor que la hinchada no va a olvidar.",
+            effects: { reputationDelta: 10, moraleDelta: 8 },
+          },
+          {
+            id: "cabezazo_desperdicio",
+            chance: 0.5,
+            summary: "La tiraste por arriba del arco y te quedaste pensando en lo que pudo haber sido.",
+            effects: { moraleDelta: -2 },
+          },
+        ],
+      },
+      {
+        key: "quedarse_atras_defensor",
+        label: "Quedarte cubriendo atrás",
+        description: "Preferís no descuidar tu posición defensiva.",
+        outcomes: [
+          { id: "sin_cambios", chance: 1, summary: "Preferiste no descuidar tu posición defensiva.", effects: {} },
+        ],
+      },
+    ],
+  },
+  {
+    key: "choque_fuerte_defensor",
+    category: "SALUD",
+    title: "Un choque durísimo en un duelo",
+    description: "Un cruce fuerte en un duelo aéreo te dejó dolorido y con dudas sobre seguir jugando.",
+    minAge: 16,
+    maxAge: 38,
+    weight: 5,
+    positions: ["DFC", "LI", "LD", "MCD"],
+    options: [
+      {
+        key: "seguir_jugando_choque",
+        label: "Seguir jugando igual",
+        description: "El equipo te necesita en el fondo, te aguantás el dolor.",
+        outcomes: [
+          {
+            id: "aguanta_choque",
+            chance: 0.5,
+            summary: "Aguantaste el dolor y el cuerpo respondió sin mayores consecuencias.",
+            effects: { moraleDelta: 5 },
+          },
+          {
+            id: "agrava_choque",
+            chance: 0.5,
+            summary: "El golpe se agravó al seguir exigiendo el cuerpo y terminaste lesionado.",
+            effects: { injuryWeeks: 6, statDeltas: { physical: -2 } },
+          },
+        ],
+      },
+      {
+        key: "salir_por_choque",
+        label: "Pedir el cambio",
+        description: "Preferís no arriesgar una lesión mayor.",
+        outcomes: [
+          { id: "sin_cambios", chance: 1, summary: "Pediste el cambio para no arriesgar una lesión mayor.", effects: {} },
+        ],
+      },
+    ],
+  },
+  {
     key: "fichaje_penales",
     category: "CLUB",
     title: "Amistoso con ojeadores en la tribuna",
@@ -1190,6 +1390,7 @@ export const EVENTS: EventDefinition[] = [
     // weight: 0 — only ever triggered directly from advanceSeason() as an alternative to a
     // regular transfer offer, and only when a genuinely better club is available to jump to.
     weight: 0,
+    excludePositions: ["POR"],
     options: [
       {
         key: "izquierda",

@@ -1,5 +1,5 @@
 import { EVENTS } from "./data/events";
-import { EventDefinition, EventOption, EventOutcome } from "./types";
+import { EventDefinition, EventOption, EventOutcome, Position } from "./types";
 
 export interface EventContext {
   age: number;
@@ -7,6 +7,8 @@ export interface EventContext {
   isAbroad?: boolean;
   /** Event keys this career has already seen — pickRandomEvent avoids repeating them. */
   seenKeys?: Set<string>;
+  /** Player's position — filters events with a positions allow-list or excludePositions deny-list. */
+  position?: Position;
 }
 
 export function eligibleEvents(context: EventContext): EventDefinition[] {
@@ -16,7 +18,9 @@ export function eligibleEvents(context: EventContext): EventDefinition[] {
       context.age >= event.minAge &&
       context.age <= event.maxAge &&
       !exclude.has(event.key) &&
-      (!event.requiresAbroad || context.isAbroad),
+      (!event.requiresAbroad || context.isAbroad) &&
+      (!event.positions || (context.position ? event.positions.includes(context.position) : false)) &&
+      (!event.excludePositions || !context.position || !event.excludePositions.includes(context.position)),
   );
 }
 
