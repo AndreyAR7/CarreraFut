@@ -1,46 +1,52 @@
 -- CreateTable
 CREATE TABLE "User" (
-    "id" TEXT NOT NULL PRIMARY KEY,
+    "id" TEXT NOT NULL,
     "email" TEXT,
     "passwordHash" TEXT,
     "displayName" TEXT NOT NULL,
     "role" TEXT NOT NULL DEFAULT 'PLAYER',
     "isGuest" BOOLEAN NOT NULL DEFAULT false,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "User_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "Session" (
-    "id" TEXT NOT NULL PRIMARY KEY,
+    "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
-    "expiresAt" DATETIME NOT NULL,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT "Session_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+    "expiresAt" TIMESTAMP(3) NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "Session_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "Country" (
-    "id" TEXT NOT NULL PRIMARY KEY,
+    "id" TEXT NOT NULL,
     "code" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "flag" TEXT NOT NULL,
-    "footballPower" INTEGER NOT NULL DEFAULT 3
+    "footballPower" INTEGER NOT NULL DEFAULT 3,
+
+    CONSTRAINT "Country_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "League" (
-    "id" TEXT NOT NULL PRIMARY KEY,
+    "id" TEXT NOT NULL,
     "key" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "tier" INTEGER NOT NULL,
     "matchesPerSeason" INTEGER NOT NULL,
     "countryId" TEXT NOT NULL,
-    CONSTRAINT "League_countryId_fkey" FOREIGN KEY ("countryId") REFERENCES "Country" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+
+    CONSTRAINT "League_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "Club" (
-    "id" TEXT NOT NULL PRIMARY KEY,
+    "id" TEXT NOT NULL,
     "key" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "shortName" TEXT NOT NULL,
@@ -48,13 +54,13 @@ CREATE TABLE "Club" (
     "primaryColor" TEXT NOT NULL,
     "leagueId" TEXT NOT NULL,
     "countryId" TEXT NOT NULL,
-    CONSTRAINT "Club_leagueId_fkey" FOREIGN KEY ("leagueId") REFERENCES "League" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
-    CONSTRAINT "Club_countryId_fkey" FOREIGN KEY ("countryId") REFERENCES "Country" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+
+    CONSTRAINT "Club_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "PlayerCareer" (
-    "id" TEXT NOT NULL PRIMARY KEY,
+    "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "lastName" TEXT NOT NULL,
     "jerseyNumber" INTEGER NOT NULL,
@@ -78,21 +84,24 @@ CREATE TABLE "PlayerCareer" (
     "morale" INTEGER NOT NULL DEFAULT 70,
     "fitness" INTEGER NOT NULL DEFAULT 100,
     "reputation" INTEGER NOT NULL DEFAULT 0,
-    "starterShare" REAL NOT NULL DEFAULT 0.6,
+    "starterShare" DOUBLE PRECISION NOT NULL DEFAULT 0.6,
+    "pendingMatchPenalty" INTEGER NOT NULL DEFAULT 0,
     "ntCaps" INTEGER NOT NULL DEFAULT 0,
     "ntGoals" INTEGER NOT NULL DEFAULT 0,
     "ntAssists" INTEGER NOT NULL DEFAULT 0,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
-    CONSTRAINT "PlayerCareer_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
-    CONSTRAINT "PlayerCareer_nationalityId_fkey" FOREIGN KEY ("nationalityId") REFERENCES "Country" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
-    CONSTRAINT "PlayerCareer_currentClubId_fkey" FOREIGN KEY ("currentClubId") REFERENCES "Club" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
-    CONSTRAINT "PlayerCareer_onLoanFromId_fkey" FOREIGN KEY ("onLoanFromId") REFERENCES "Club" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+    "positiveDecisionStreak" INTEGER NOT NULL DEFAULT 0,
+    "pendingScandalKey" TEXT,
+    "pendingScandalSeasonsLeft" INTEGER,
+    "celebrationJson" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "PlayerCareer_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "SeasonLog" (
-    "id" TEXT NOT NULL PRIMARY KEY,
+    "id" TEXT NOT NULL,
     "careerId" TEXT NOT NULL,
     "age" INTEGER NOT NULL,
     "clubId" TEXT,
@@ -101,7 +110,7 @@ CREATE TABLE "SeasonLog" (
     "matches" INTEGER NOT NULL DEFAULT 0,
     "goals" INTEGER NOT NULL DEFAULT 0,
     "assists" INTEGER NOT NULL DEFAULT 0,
-    "avgRating" REAL NOT NULL DEFAULT 6.0,
+    "avgRating" DOUBLE PRECISION NOT NULL DEFAULT 6.0,
     "leagueResult" TEXT,
     "cupResult" TEXT,
     "continentalResult" TEXT,
@@ -109,14 +118,14 @@ CREATE TABLE "SeasonLog" (
     "ntCaps" INTEGER NOT NULL DEFAULT 0,
     "ntGoals" INTEGER NOT NULL DEFAULT 0,
     "ntAssists" INTEGER NOT NULL DEFAULT 0,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT "SeasonLog_careerId_fkey" FOREIGN KEY ("careerId") REFERENCES "PlayerCareer" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
-    CONSTRAINT "SeasonLog_clubId_fkey" FOREIGN KEY ("clubId") REFERENCES "Club" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "SeasonLog_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "CareerEventLog" (
-    "id" TEXT NOT NULL PRIMARY KEY,
+    "id" TEXT NOT NULL,
     "careerId" TEXT NOT NULL,
     "age" INTEGER NOT NULL,
     "eventKey" TEXT NOT NULL,
@@ -125,47 +134,50 @@ CREATE TABLE "CareerEventLog" (
     "optionLabel" TEXT NOT NULL,
     "outcomeSummary" TEXT NOT NULL,
     "statDeltaJson" TEXT NOT NULL,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT "CareerEventLog_careerId_fkey" FOREIGN KEY ("careerId") REFERENCES "PlayerCareer" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "CareerEventLog_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "Trophy" (
-    "id" TEXT NOT NULL PRIMARY KEY,
+    "id" TEXT NOT NULL,
     "careerId" TEXT NOT NULL,
     "age" INTEGER NOT NULL,
     "name" TEXT NOT NULL,
     "tier" TEXT NOT NULL,
     "clubId" TEXT,
     "isNationalTeam" BOOLEAN NOT NULL DEFAULT false,
-    CONSTRAINT "Trophy_careerId_fkey" FOREIGN KEY ("careerId") REFERENCES "PlayerCareer" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
-    CONSTRAINT "Trophy_clubId_fkey" FOREIGN KEY ("clubId") REFERENCES "Club" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+
+    CONSTRAINT "Trophy_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "PendingEvent" (
-    "id" TEXT NOT NULL PRIMARY KEY,
+    "id" TEXT NOT NULL,
     "careerId" TEXT NOT NULL,
     "age" INTEGER NOT NULL,
     "eventKey" TEXT NOT NULL,
     "title" TEXT NOT NULL,
     "description" TEXT NOT NULL,
     "optionsJson" TEXT NOT NULL,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT "PendingEvent_careerId_fkey" FOREIGN KEY ("careerId") REFERENCES "PlayerCareer" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "PendingEvent_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "PendingClubOffer" (
-    "id" TEXT NOT NULL PRIMARY KEY,
+    "id" TEXT NOT NULL,
     "careerId" TEXT NOT NULL,
     "age" INTEGER NOT NULL,
     "kind" TEXT NOT NULL,
     "title" TEXT NOT NULL,
     "description" TEXT NOT NULL,
     "optionsJson" TEXT NOT NULL,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT "PendingClubOffer_careerId_fkey" FOREIGN KEY ("careerId") REFERENCES "PlayerCareer" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "PendingClubOffer_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
@@ -206,3 +218,48 @@ CREATE UNIQUE INDEX "PendingEvent_careerId_key" ON "PendingEvent"("careerId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "PendingClubOffer_careerId_key" ON "PendingClubOffer"("careerId");
+
+-- AddForeignKey
+ALTER TABLE "Session" ADD CONSTRAINT "Session_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "League" ADD CONSTRAINT "League_countryId_fkey" FOREIGN KEY ("countryId") REFERENCES "Country"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Club" ADD CONSTRAINT "Club_leagueId_fkey" FOREIGN KEY ("leagueId") REFERENCES "League"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Club" ADD CONSTRAINT "Club_countryId_fkey" FOREIGN KEY ("countryId") REFERENCES "Country"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PlayerCareer" ADD CONSTRAINT "PlayerCareer_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PlayerCareer" ADD CONSTRAINT "PlayerCareer_nationalityId_fkey" FOREIGN KEY ("nationalityId") REFERENCES "Country"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PlayerCareer" ADD CONSTRAINT "PlayerCareer_currentClubId_fkey" FOREIGN KEY ("currentClubId") REFERENCES "Club"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PlayerCareer" ADD CONSTRAINT "PlayerCareer_onLoanFromId_fkey" FOREIGN KEY ("onLoanFromId") REFERENCES "Club"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SeasonLog" ADD CONSTRAINT "SeasonLog_careerId_fkey" FOREIGN KEY ("careerId") REFERENCES "PlayerCareer"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SeasonLog" ADD CONSTRAINT "SeasonLog_clubId_fkey" FOREIGN KEY ("clubId") REFERENCES "Club"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "CareerEventLog" ADD CONSTRAINT "CareerEventLog_careerId_fkey" FOREIGN KEY ("careerId") REFERENCES "PlayerCareer"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Trophy" ADD CONSTRAINT "Trophy_careerId_fkey" FOREIGN KEY ("careerId") REFERENCES "PlayerCareer"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Trophy" ADD CONSTRAINT "Trophy_clubId_fkey" FOREIGN KEY ("clubId") REFERENCES "Club"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PendingEvent" ADD CONSTRAINT "PendingEvent_careerId_fkey" FOREIGN KEY ("careerId") REFERENCES "PlayerCareer"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PendingClubOffer" ADD CONSTRAINT "PendingClubOffer_careerId_fkey" FOREIGN KEY ("careerId") REFERENCES "PlayerCareer"("id") ON DELETE CASCADE ON UPDATE CASCADE;

@@ -8,14 +8,14 @@ selección nacional, disciplina, etc.) que hacen subir o bajar su nivel.
 ## Stack
 
 - Next.js 16 (App Router, Server Actions) + TypeScript + Tailwind v4
-- Prisma 7 + SQLite (vía `@prisma/adapter-better-sqlite3`)
+- Prisma 7 + PostgreSQL (Supabase, vía `@prisma/adapter-pg`)
 - Auth propia con sesiones en cookie (sin librerías externas), + modo invitado sin registro
 
 ## Primer arranque
 
 ```bash
 npm install
-cp .env.example .env   # si no existe .env, completar DATABASE_URL
+cp .env.example .env   # si no existe .env, completar DATABASE_URL con la connection string de Postgres
 npx prisma migrate dev
 npx prisma db seed
 npm run dev
@@ -25,7 +25,9 @@ Abrí [http://localhost:3000](http://localhost:3000).
 
 ## Variables de entorno
 
-- `DATABASE_URL`: ruta al archivo SQLite, por ejemplo `file:./prisma/dev.db`.
+- `DATABASE_URL`: connection string de Postgres, por ejemplo la de Supabase (usar el **connection
+  pooler** — `aws-0-<región>.pooler.supabase.com:5432` con usuario `postgres.<project-ref>` — la
+  conexión directa `db.<project-ref>.supabase.co` solo resuelve por IPv6 en muchas redes).
 - `SESSION_COOKIE_NAME`: nombre de la cookie de sesión (opcional, tiene default).
 
 ## Base de datos
@@ -55,18 +57,20 @@ mayoría (fácil de testear):
 
 Es una app Next.js estándar (`npm run build && npm run start`) — **no es un sitio estático**:
 usa Server Actions, sesiones con cookie y lee la base de datos en cada request, así que necesita
-un proceso Node corriendo siempre, no una carpeta de HTML para "publicar". Como usa SQLite,
-además hace falta persistir el archivo de `DATABASE_URL` entre despliegues (un volumen si se
-corre en un contenedor) — si el disco es efímero, la base se resetea en cada deploy/reinicio y
-se pierden todas las cuentas y carreras.
+un proceso Node corriendo siempre, no una carpeta de HTML para "publicar".
+
+La base de datos vive en Supabase (Postgres), no en el disco del servicio — así que el plan
+**Free** de Render alcanza perfectamente: cuentas y carreras persisten entre deploys y reinicios
+sin necesidad de un disco persistente ni de un plan pago.
 
 ### Render
 
-El repo incluye `render.yaml` (Blueprint) para crear el servicio ya bien configurado: tipo
-**Web Service** (no "Static Site"), con un disco persistente montado en `/data` y
-`DATABASE_URL=file:/data/dev.db`. Requiere el plan **Starter** o superior — el plan **Free** de
-Render no soporta discos persistentes, así que la base se borraría en cada redeploy.
+El repo incluye `render.yaml` (Blueprint) de referencia: tipo **Web Service** (no "Static Site"),
+plan **Free**. `DATABASE_URL` se configura como variable de entorno directamente en el servicio
+(nunca en este archivo, que es público) con la connection string de Supabase.
 
 1. En Render: New → Blueprint → conectar este repo. Va a leer `render.yaml` solo.
 2. Si ya creaste el servicio a mano como "Static Site", hay que borrarlo y crear uno nuevo — no
    se puede convertir un Static Site existente en Web Service.
+3. Configurar `DATABASE_URL` a mano en el dashboard del servicio (Environment) con la connection
+   string de Supabase.

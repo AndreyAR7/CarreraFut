@@ -1,10 +1,10 @@
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import { PrismaPg } from "@prisma/adapter-pg";
 import "dotenv/config";
 import { CLUBS, LEAGUES } from "../lib/game/data/clubs";
 import { COUNTRIES } from "../lib/game/data/countries";
 import { PrismaClient } from "../lib/generated/prisma/client";
 
-const adapter = new PrismaBetterSqlite3({ url: process.env.DATABASE_URL! });
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
