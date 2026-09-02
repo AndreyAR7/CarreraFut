@@ -158,16 +158,29 @@ export async function createCareer(userId: string, input: CreateCareerInput) {
 // (build a name locally before the world starts calling) and offers can lean toward upgrades.
 const CLUB_OFFER_KINDS: ClubOfferKind[] = ["CANTERA", "TRANSFER", "LOAN_OUT", "LOAN_RETURN"];
 
-// Decisive penalty-shootout decisions — resolveEventAction skips its usual automatic
-// advanceSeason() call for these (see app/actions/career.ts), because that immediate next-season
-// simulation could hand out an unrelated trophy in the very same reload a missed penalty shows
-// on, making it look like the shootout itself was won.
+// Decisive penalty-shootout decisions — these are rare, high-stakes moments, and having two land
+// back-to-back would undercut that (see MIN_SEASONS_BETWEEN_SHOOTOUTS below).
 export const SHOOTOUT_EVENT_KEYS = new Set([
   "mundial_penales",
   "champions_penales",
   "copa_penales",
   "fichaje_penales",
 ]);
+
+// However rare each individual shootout's chance already is, nothing stopped two completely
+// independent ones (say, a Champions League final and a domestic cup final) from both rolling
+// true in the very same batch of seasons — this enforces a real gap between them.
+const MIN_SEASONS_BETWEEN_SHOOTOUTS = 3;
+
+async function seasonsSinceLastShootout(careerId: string, currentAge: number): Promise<number> {
+  const last = await prisma.careerEventLog.findFirst({
+    where: { careerId, eventKey: { in: Array.from(SHOOTOUT_EVENT_KEYS) } },
+    orderBy: { age: "desc" },
+    select: { age: true },
+  });
+  return last ? currentAge - last.age : Infinity;
+}
+
 const DOMESTIC_ONLY_TRANSITIONS = 3;
 // Below this overall, European (UEFA) clubs simply aren't in the running yet — the career is
 // meant to read as "build your name across the Americas first, Europe is the payoff move."
@@ -308,6 +321,66 @@ async function generateTransferOffer(
         : includesEuropeanOffer
           ? "Tu nombre llegó a Europa, donde se mueve la plata grande del fútbol. Elegí bien tu próximo paso."
           : "Llegaron ofertas de otros clubes. Podés aceptar una o quedarte.",
+      optionsJson: JSON.stringify(options),
+    },
+  });
+  return true;
+}
+
+// Earned by winning the signing-trial shootout (fichaje_penales) — 3 clubs instead of the usual
+// 2, weighted toward marquee names since the player just proved themselves in front of scouts,
+// plus the option to stay. The player always makes the actual call, never an automatic move.
+async function generatePromotionOffer(
+  careerId: string,
+  age: number,
+  currentClubId: string,
+  overall: number,
+  nationalityId: string,
+) {
+  const currentClub = await prisma.club.findUniqueOrThrow({ where: { id: currentClubId } });
+  const candidates = await findClubCandidates({
+    excludeClubIds: [currentClubId],
+    minReputation: Math.min(5, currentClub.reputation + 1),
+    maxReputation: 5,
+    domesticOnly: false,
+    nationalityId,
+    allowEurope: overall >= EUROPE_OVERALL_THRESHOLD,
+    minCount: 1,
+  });
+  if (candidates.length === 0) return false;
+
+  const chosen = sampleWeighted(candidates, clubOfferWeight, Math.min(3, candidates.length));
+  const options: ClubOfferOption[] = chosen.map((club, index) => ({
+    optionKey: `promotion_${index}`,
+    label: `Fichar por ${club.name}`,
+    description: `${club.league.name} · ${club.country.name}`,
+    clubId: club.id,
+    clubName: club.name,
+    clubShort: club.shortName,
+    clubColor: club.primaryColor,
+    clubKey: club.key,
+    leagueName: club.league.name,
+    countryCode: club.country.code,
+    reputation: club.reputation,
+    clearsLoan: true,
+    marketValueMultiplier: 1.1,
+    starterShareSet: 0.55,
+  }));
+  options.push({
+    optionKey: "promotion_stay",
+    label: `Quedarte en ${currentClub.name}`,
+    description: "Preferís no dar el salto todavía y seguir en tu club actual.",
+    clubId: null,
+    moraleDelta: 3,
+  });
+
+  await prisma.pendingClubOffer.create({
+    data: {
+      careerId,
+      age,
+      kind: "TRANSFER" satisfies ClubOfferKind,
+      title: "¡Ganaste tu pasaporte a algo mejor!",
+      description: "Tu gran nivel frente a los ojeadores abrió puertas. Elegí tu próximo destino, o quedate si preferís.",
       optionsJson: JSON.stringify(options),
     },
   });
@@ -546,24 +619,14 @@ export async function resolveEvent(
     ? `${domesticCupName(career.currentClub!.country.code)} (${career.currentClub!.name})`
     : null;
 
-  // A won signing-trial shootout moves the player to a better club immediately — same shape as
-  // a regular transfer, just auto-accepted since the player already "earned" it with the kick.
-  let promotionClub: Awaited<ReturnType<typeof prisma.club.findFirstOrThrow>> | null = null;
-  if (outcome.effects.promotesToBetterClub && career.currentClub) {
-    const candidates = await findClubCandidates({
-      excludeClubIds: [career.currentClub.id],
-      minReputation: Math.min(5, career.currentClub.reputation + 1),
-      maxReputation: 5,
-      domesticOnly: false,
-      nationalityId: career.nationalityId,
-      allowEurope: nextOverall >= EUROPE_OVERALL_THRESHOLD,
-      minCount: 1,
-    });
-    promotionClub = sampleWeighted(candidates, clubOfferWeight, 1)[0] ?? null;
-  }
+  // A won signing-trial shootout earns the player a real transfer offer — 3 clubs plus the
+  // option to stay, same as any other transfer decision, instead of auto-teleporting them to a
+  // single randomly-picked club with no say in it (see the pendingClubOffer created below).
+  const willOfferPromotion = Boolean(outcome.effects.promotesToBetterClub && career.currentClub);
 
   // A scandal breaking (see pendingScandalKey) forces the player OUT to a noticeably worse club
-  // and a real market-value hit — the mirror image of promotesToBetterClub.
+  // and a real market-value hit — unlike a promotion, there's no choice here: the club is the one
+  // cutting ties, not the player picking a destination.
   let demotionClub: Awaited<ReturnType<typeof prisma.club.findFirstOrThrow>> | null = null;
   if (outcome.effects.forcesDemotionScandal && career.currentClub) {
     const candidates = await findClubCandidates({
@@ -578,7 +641,7 @@ export async function resolveEvent(
     demotionClub = sampleN(candidates, 1)[0] ?? null;
   }
 
-  const clubChangeMarketMultiplier = promotionClub ? 1.1 : demotionClub ? 0.6 : 1;
+  const clubChangeMarketMultiplier = demotionClub ? 0.6 : 1;
 
   const celebrationTrophies: { name: string; tier: string }[] = [];
   if (wonWorldCup) celebrationTrophies.push({ name: `Mundial (${career.nationality.name})`, tier: "WORLD" });
@@ -607,7 +670,6 @@ export async function resolveEvent(
         marketValueEUR: Math.round(nextMarketValue * clubChangeMarketMultiplier),
         pendingMatchPenalty: career.pendingMatchPenalty + matchPenalty,
         positiveDecisionStreak: nextPositiveStreak,
-        ...(promotionClub ? { currentClubId: promotionClub.id, starterShare: 0.55 } : {}),
         ...(demotionClub ? { currentClubId: demotionClub.id, starterShare: 0.5 } : {}),
         ...(scandalFollowupKey
           ? { pendingScandalKey: scandalFollowupKey, pendingScandalSeasonsLeft: randomInt(2, 3) }
@@ -668,6 +730,16 @@ export async function resolveEvent(
         ]
       : []),
   ]);
+
+  if (willOfferPromotion && career.currentClub) {
+    await generatePromotionOffer(
+      careerId,
+      pending.age,
+      career.currentClub.id,
+      nextOverall,
+      career.nationalityId,
+    );
+  }
 
   return {
     outcomeId: outcome.id,
@@ -808,12 +880,14 @@ export async function advanceSeason(careerId: string, userId: string) {
     // shootout narrative (and its "ceder" escape hatch) is built around an outfield player's own
     // choice to step up, not a keeper's. These 3 triggers just never fire for one.
     const isGoalkeeper = career.position === "POR";
+    const seasonsSinceShootout = await seasonsSinceLastShootout(careerId, nextAge);
+    const shootoutCooldownOver = seasonsSinceShootout >= MIN_SEASONS_BETWEEN_SHOOTOUTS;
 
     // A shootout hands the outcome to the player instead of auto-resolving it — only on
     // seasons that aren't already ending in retirement, and it takes priority over the
     // regular end-of-batch club offer / narrative event.
     let shootoutTriggered = false;
-    if (!retiring && !isGoalkeeper && isMajorTournamentYear && ntResult.calledUp) {
+    if (!retiring && !isGoalkeeper && shootoutCooldownOver && isMajorTournamentYear && ntResult.calledUp) {
       const shootoutChance = decisiveShootoutChance({
         overall,
         countryFootballPower: career.nationality.footballPower,
@@ -830,6 +904,7 @@ export async function advanceSeason(careerId: string, userId: string) {
     if (
       !retiring &&
       !isGoalkeeper &&
+      shootoutCooldownOver &&
       !shootoutTriggered &&
       playsContinental &&
       (result.continentalResult === "FINAL" || result.continentalResult === "CAMPEON")
@@ -850,6 +925,7 @@ export async function advanceSeason(careerId: string, userId: string) {
     if (
       !retiring &&
       !isGoalkeeper &&
+      shootoutCooldownOver &&
       !shootoutTriggered &&
       !continentalShootoutTriggered &&
       (result.cupResult === "FINAL" || result.cupResult === "CAMPEON")
@@ -1226,9 +1302,11 @@ export async function advanceSeason(careerId: string, userId: string) {
     // Sometimes the move gets earned dramatically instead of just picked from a list: scouts are
     // in the stands and a penalty in a friendly decides it. Only offered when a genuinely better
     // club is actually available, only for younger players (matches fichaje_penales's own
-    // narrative — a veteran isn't out there trying to impress scouts in a friendly), and never
-    // for a goalkeeper (same reasoning as the other 3 shootouts).
-    if (finalCareer.age <= 33 && finalCareer.position !== "POR") {
+    // narrative — a veteran isn't out there trying to impress scouts in a friendly), never for a
+    // goalkeeper (same reasoning as the other 3 shootouts), and not right on the heels of another
+    // decisive shootout.
+    const cooldownOverForTrial = (await seasonsSinceLastShootout(careerId, finalCareer.age)) >= MIN_SEASONS_BETWEEN_SHOOTOUTS;
+    if (finalCareer.age <= 33 && finalCareer.position !== "POR" && cooldownOverForTrial) {
       const trialCandidates = await findClubCandidates({
         excludeClubIds: [finalCareer.currentClubId],
         minReputation: Math.min(5, finalCareer.currentClub.reputation + 1),

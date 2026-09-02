@@ -1400,7 +1400,7 @@ export const EVENTS: EventDefinition[] = [
           {
             id: "gol",
             chance: 0.5,
-            summary: "¡La clavaste en el palo izquierdo con los ojeadores mirando! Un club más grande decide ficharte de inmediato.",
+            summary: "¡La clavaste en el palo izquierdo con los ojeadores mirando! Clubes más grandes ya están interesados en ficharte.",
             effects: { reputationDelta: 12, marketValueMultiplier: 1.1, moraleDelta: 10, promotesToBetterClub: true },
           },
           {
@@ -1425,7 +1425,7 @@ export const EVENTS: EventDefinition[] = [
           {
             id: "gol",
             chance: 0.4,
-            summary: "¡La clavaste al medio con los ojeadores mirando! Un club más grande decide ficharte de inmediato.",
+            summary: "¡La clavaste al medio con los ojeadores mirando! Clubes más grandes ya están interesados en ficharte.",
             effects: { reputationDelta: 12, marketValueMultiplier: 1.1, moraleDelta: 10, promotesToBetterClub: true },
           },
           {
@@ -1450,7 +1450,7 @@ export const EVENTS: EventDefinition[] = [
           {
             id: "gol",
             chance: 0.5,
-            summary: "¡La clavaste en el palo derecho con los ojeadores mirando! Un club más grande decide ficharte de inmediato.",
+            summary: "¡La clavaste en el palo derecho con los ojeadores mirando! Clubes más grandes ya están interesados en ficharte.",
             effects: { reputationDelta: 12, marketValueMultiplier: 1.1, moraleDelta: 10, promotesToBetterClub: true },
           },
           {

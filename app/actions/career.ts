@@ -72,7 +72,17 @@ export async function resolveEventAction(careerId: string, optionKey: string) {
   // careerEngine.ts) instead of overwriting it, so a shootout's own trophy/miss can never be
   // silently replaced by an unrelated one this immediately produces — the game can stay fluid
   // (always straight into the next decision) without that conflation bug coming back.
-  await advanceSeason(careerId, user.id);
+  //
+  // Some outcomes (e.g. winning the signing-trial shootout) queue a follow-up decision of their
+  // own — a club offer the player has to pick from — right inside resolveEvent(). advanceSeason()
+  // would throw ("Tenés una decisión pendiente") if called on top of that, so skip it whenever
+  // resolving this event already left something new pending.
+  const stillPending =
+    (await prisma.pendingEvent.findUnique({ where: { careerId } })) ??
+    (await prisma.pendingClubOffer.findUnique({ where: { careerId } }));
+  if (!stillPending) {
+    await advanceSeason(careerId, user.id);
+  }
   return outcome;
 }
 
