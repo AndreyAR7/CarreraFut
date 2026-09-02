@@ -537,6 +537,649 @@ export const EVENTS: EventDefinition[] = [
     ],
   },
   {
+    key: "informacion_privilegiada",
+    category: "DISCIPLINA",
+    title: "Información privilegiada",
+    description: "Un grupo de apostadores te ofrece plata a cambio de información interna del plantel.",
+    minAge: 18,
+    maxAge: 37,
+    weight: 4,
+    options: [
+      {
+        key: "aceptar_info",
+        label: "Aceptar",
+        description: "Te llevás un dinero extra por pasar información, pero es un secreto que puede volverse en tu contra.",
+        outcomes: [
+          {
+            id: "impune_info",
+            chance: 1,
+            summary: "Cobraste sin que nadie se enterara... por ahora.",
+            effects: { marketValueMultiplier: 1.04, moraleDelta: 1, scandalFollowupKey: "escandalo_apuestas_estalla" },
+          },
+        ],
+      },
+      {
+        key: "rechazar_info",
+        label: "Rechazar",
+        description: "No pasa nada, seguís enfocado en lo tuyo.",
+        outcomes: [
+          { id: "sin_cambios", chance: 1, summary: "Rechazaste la oferta y seguiste tu carrera como si nada hubiera pasado.", effects: {} },
+        ],
+      },
+    ],
+  },
+  {
+    key: "escandalo_apuestas_estalla",
+    category: "DISCIPLINA",
+    title: "Sale a la luz la filtración a las apuestas",
+    description: "Una investigación destapó que pasabas información interna a un grupo de apostadores. La noticia ya está en todos lados.",
+    minAge: 16,
+    maxAge: 41,
+    // weight: 0 — only ever forced onto the career a couple of decisions after accepting the
+    // deal in "informacion_privilegiada" (see pendingScandalKey).
+    weight: 0,
+    options: [
+      {
+        key: "dar_la_cara",
+        label: "Dar la cara ante la prensa",
+        description: "El club no quiere quedar salpicado por el escándalo y decide desvincularte.",
+        outcomes: [
+          {
+            id: "salida_forzada",
+            chance: 1,
+            summary: "El escándalo de las apuestas explotó en las noticias. El club te desechó para cuidar su imagen y tuviste que salir a reconstruir tu carrera en otro lado.",
+            effects: { reputationDelta: -25, moraleDelta: -20, forcesDemotionScandal: true },
+          },
+        ],
+      },
+    ],
+  },
+  {
+    key: "oferta_academia",
+    category: "ENTRENAMIENTO",
+    title: "Invitación a una academia de élite",
+    description: "Una academia de fútbol reconocida internacionalmente te invita a una pasantía intensiva de un mes.",
+    minAge: 16,
+    maxAge: 26,
+    weight: 5,
+    options: [
+      {
+        key: "ir_academia",
+        label: "Ir a la pasantía",
+        description: "Podés dar un salto técnico importante, aunque el nivel de exigencia es muy alto.",
+        outcomes: [
+          {
+            id: "salto_tecnico",
+            chance: 0.55,
+            summary: "La pasantía fue un salto enorme para tu técnica y tu confianza.",
+            effects: { statDeltas: { passing: 2, shooting: 2 } },
+          },
+          {
+            id: "sobreexigencia",
+            chance: 0.45,
+            summary: "El nivel de exigencia te pasó factura físicamente.",
+            effects: { fitnessDelta: -10, moraleDelta: -3 },
+          },
+        ],
+      },
+      {
+        key: "quedarse_club",
+        label: "Quedarte entrenando con tu club",
+        description: "Preferís no interrumpir tu rutina habitual.",
+        outcomes: [
+          { id: "sin_cambios", chance: 1, summary: "Seguiste con tu rutina habitual de entrenamiento.", effects: {} },
+        ],
+      },
+    ],
+  },
+  {
+    key: "critica_excompanero",
+    category: "MEDIA",
+    title: "Un ex compañero te critica en una entrevista",
+    description: "Un ex compañero de equipo declaró públicamente que te sobrevaloran como jugador.",
+    minAge: 18,
+    maxAge: 38,
+    weight: 4,
+    options: [
+      {
+        key: "responder_critica",
+        label: "Responderle públicamente",
+        description: "Salís a contestarle en tus propios términos.",
+        outcomes: [
+          {
+            id: "gana_respeto",
+            chance: 0.5,
+            summary: "Tu respuesta fue contundente y ganaste el respeto de la gente.",
+            effects: { reputationDelta: 7, moraleDelta: 4 },
+          },
+          {
+            id: "escala_conflicto",
+            chance: 0.5,
+            summary: "El ida y vuelta escaló y quedaste envuelto en una polémica innecesaria.",
+            effects: { reputationDelta: -6, moraleDelta: -5 },
+          },
+        ],
+      },
+      {
+        key: "ignorar_critica",
+        label: "No responder",
+        description: "Preferís dejar que hable el juego.",
+        outcomes: [
+          { id: "sin_cambios", chance: 1, summary: "No respondiste y dejaste que el tema se apagara solo.", effects: {} },
+        ],
+      },
+    ],
+  },
+  {
+    key: "oferta_marca_propia",
+    category: "FINANZAS",
+    title: "Propuesta para lanzar tu propia marca",
+    description: "Te proponen lanzar tu propia línea de botines o indumentaria deportiva.",
+    minAge: 20,
+    maxAge: 36,
+    weight: 4,
+    options: [
+      {
+        key: "lanzar_marca",
+        label: "Lanzar la marca",
+        description: "Invertís tiempo y dinero propio en el proyecto.",
+        outcomes: [
+          {
+            id: "marca_exitosa",
+            chance: 0.5,
+            summary: "La marca despegó mucho mejor de lo esperado.",
+            effects: { marketValueMultiplier: 1.06, reputationDelta: 5 },
+          },
+          {
+            id: "marca_fracasa",
+            chance: 0.5,
+            summary: "El proyecto no prendió y perdiste la inversión inicial.",
+            effects: { marketValueMultiplier: 0.98, moraleDelta: -4 },
+          },
+        ],
+      },
+      {
+        key: "no_lanzar_marca",
+        label: "No arriesgarte con el proyecto",
+        description: "Preferís no meterte en algo fuera de la cancha.",
+        outcomes: [
+          { id: "sin_cambios", chance: 1, summary: "Decidiste no arriesgarte con el proyecto por ahora.", effects: {} },
+        ],
+      },
+    ],
+  },
+  {
+    key: "conflicto_pareja",
+    category: "PERSONAL",
+    title: "Tensión en tu relación de pareja",
+    description: "Los viajes constantes y la exigencia de la carrera generaron tensión en tu relación.",
+    minAge: 19,
+    maxAge: 37,
+    weight: 4,
+    options: [
+      {
+        key: "priorizar_relacion",
+        label: "Bajar un cambio para cuidar la relación",
+        description: "Le dedicás tiempo extra a tu vida personal.",
+        outcomes: [
+          {
+            id: "relacion_mejora",
+            chance: 1,
+            summary: "Pudiste recomponer la relación y ganaste tranquilidad mental.",
+            effects: { moraleDelta: 10 },
+          },
+        ],
+      },
+      {
+        key: "priorizar_carrera",
+        label: "Seguir enfocado en tu carrera",
+        description: "Delegás lo personal para no perder ritmo competitivo.",
+        outcomes: [
+          {
+            id: "carrera_rendimiento",
+            chance: 0.5,
+            summary: "El enfoque total en lo deportivo se notó en tu rendimiento.",
+            effects: { statDeltas: { mentality: 2 } },
+          },
+          {
+            id: "carrera_desgaste",
+            chance: 0.5,
+            summary: "La tensión sin resolver en lo personal te terminó pasando factura.",
+            effects: { moraleDelta: -7 },
+          },
+        ],
+      },
+    ],
+  },
+  {
+    key: "rumor_transferencia",
+    category: "MEDIA",
+    title: "Rumores de transferencia sin confirmar",
+    description: "La prensa instaló un rumor de pase tuyo a otro club que nadie del club confirma ni desmiente.",
+    minAge: 18,
+    maxAge: 36,
+    weight: 5,
+    options: [
+      {
+        key: "aclarar_rumor",
+        label: "Salir a aclarar la situación",
+        description: "Publicás un mensaje propio para bajar el ruido mediático.",
+        outcomes: [
+          {
+            id: "rumor_calma",
+            chance: 0.6,
+            summary: "Tu mensaje calmó las aguas y todo volvió a la normalidad.",
+            effects: { reputationDelta: 4 },
+          },
+          {
+            id: "rumor_empeora",
+            chance: 0.4,
+            summary: "Tu propio mensaje alimentó todavía más la especulación.",
+            effects: { moraleDelta: -5 },
+          },
+        ],
+      },
+      {
+        key: "ignorar_rumor",
+        label: "No decir nada",
+        description: "Preferís dejar que el club maneje la situación.",
+        outcomes: [
+          { id: "sin_cambios", chance: 1, summary: "No dijiste nada y el rumor perdió fuerza con el tiempo.", effects: {} },
+        ],
+      },
+    ],
+  },
+  {
+    key: "regalo_hincha",
+    category: "PERSONAL",
+    title: "Un hincha te regala algo muy costoso",
+    description: "Un hincha se te acerca después de un partido y te regala algo de gran valor económico.",
+    minAge: 17,
+    maxAge: 38,
+    weight: 3,
+    options: [
+      {
+        key: "aceptar_regalo",
+        label: "Aceptar el regalo",
+        description: "El gesto te emociona, aunque no sabés bien las intenciones detrás.",
+        outcomes: [
+          {
+            id: "regalo_lindo",
+            chance: 0.6,
+            summary: "Fue un gesto genuino de cariño que te llenó de emoción.",
+            effects: { moraleDelta: 8 },
+          },
+          {
+            id: "regalo_incomodo",
+            chance: 0.4,
+            summary: "Después te enteraste que el hincha esperaba favores a cambio, y quedaste incómodo con la situación.",
+            effects: { moraleDelta: -6, reputationDelta: -3 },
+          },
+        ],
+      },
+      {
+        key: "rechazar_regalo",
+        label: "Rechazar el regalo con respeto",
+        description: "Preferís no aceptar nada que pueda generar compromisos.",
+        outcomes: [
+          { id: "sin_cambios", chance: 1, summary: "Rechazaste el regalo amablemente para no generar compromisos.", effects: {} },
+        ],
+      },
+    ],
+  },
+  {
+    key: "oferta_pelicula",
+    category: "MEDIA",
+    title: "Propuesta para un papel en una película",
+    description: "Una productora te ofrece un pequeño papel en una película sobre fútbol.",
+    minAge: 20,
+    maxAge: 36,
+    weight: 3,
+    options: [
+      {
+        key: "aceptar_pelicula",
+        label: "Aceptar el papel",
+        description: "Sumás una experiencia nueva y exposición mediática.",
+        outcomes: [
+          {
+            id: "pelicula_exito",
+            chance: 0.5,
+            summary: "Tu papel fue bien recibido y ganaste popularidad fuera de la cancha.",
+            effects: { reputationDelta: 8, marketValueMultiplier: 1.03 },
+          },
+          {
+            id: "pelicula_distraccion",
+            chance: 0.5,
+            summary: "El rodaje te quitó más tiempo del previsto y te distrajo de lo deportivo.",
+            effects: { statDeltas: { mentality: -1 }, moraleDelta: -3 },
+          },
+        ],
+      },
+      {
+        key: "rechazar_pelicula",
+        label: "Rechazar la propuesta",
+        description: "Preferís mantener el foco cien por ciento en el fútbol.",
+        outcomes: [
+          { id: "sin_cambios", chance: 1, summary: "Rechazaste la propuesta para mantener el foco en lo deportivo.", effects: {} },
+        ],
+      },
+    ],
+  },
+  {
+    key: "crisis_institucional",
+    category: "FINANZAS",
+    title: "Crisis económica en el club",
+    description: "El club atraviesa una crisis financiera y le pide al plantel aceptar una rebaja salarial temporal.",
+    minAge: 18,
+    maxAge: 38,
+    weight: 4,
+    options: [
+      {
+        key: "aceptar_rebaja",
+        label: "Aceptar la rebaja",
+        description: "Ayudás a la institución en un momento difícil.",
+        outcomes: [
+          {
+            id: "rebaja_valorada",
+            chance: 1,
+            summary: "Tu gesto fue muy valorado por la dirigencia y la hinchada.",
+            effects: { reputationDelta: 10, marketValueMultiplier: 0.97 },
+          },
+        ],
+      },
+      {
+        key: "rechazar_rebaja",
+        label: "Rechazar la rebaja",
+        description: "Preferís no resignar nada de tu contrato actual.",
+        outcomes: [
+          {
+            id: "rebaja_tension",
+            chance: 1,
+            summary: "El club respetó tu decisión, aunque quedó cierta tensión con la dirigencia.",
+            effects: { moraleDelta: -4 },
+          },
+        ],
+      },
+    ],
+  },
+  {
+    key: "mal_arbitraje",
+    category: "DISCIPLINA",
+    title: "Un arbitraje polémico perjudica a tu equipo",
+    description: "Una decisión arbitral muy discutida le costó un partido clave a tu equipo.",
+    minAge: 17,
+    maxAge: 38,
+    weight: 5,
+    options: [
+      {
+        key: "quejarse_publico",
+        label: "Quejarte públicamente",
+        description: "Denunciás la situación ante los medios.",
+        outcomes: [
+          {
+            id: "apoyo_quejarse",
+            chance: 0.45,
+            summary: "Tu reclamo generó apoyo y visibilizó el problema arbitral.",
+            effects: { reputationDelta: 6, moraleDelta: 3 },
+          },
+          {
+            id: "sancion_quejarse",
+            chance: 0.55,
+            summary: "La liga te sancionó por tus declaraciones contra el arbitraje.",
+            effects: { suspensionMatches: 1, reputationDelta: -5 },
+          },
+        ],
+      },
+      {
+        key: "aceptar_arbitraje",
+        label: "Aceptar la decisión y seguir adelante",
+        description: "Preferís no generar más conflicto por algo que ya pasó.",
+        outcomes: [
+          { id: "sin_cambios", chance: 1, summary: "Aceptaste la decisión arbitral y seguiste enfocado en lo que viene.", effects: {} },
+        ],
+      },
+    ],
+  },
+  {
+    key: "beca_estudios",
+    category: "PERSONAL",
+    title: "Beca para estudiar a distancia",
+    description: "Una universidad te ofrece una beca para estudiar una carrera compatible con tu rutina de entrenamientos.",
+    minAge: 16,
+    maxAge: 30,
+    weight: 4,
+    options: [
+      {
+        key: "aceptar_beca",
+        label: "Aceptar la beca",
+        description: "Sumás una formación extra, aunque te resta tiempo de descanso.",
+        outcomes: [
+          {
+            id: "beca_bien",
+            chance: 0.6,
+            summary: "Lograste equilibrar los estudios con el fútbol y ganaste una mentalidad más madura.",
+            effects: { statDeltas: { mentality: 2 } },
+          },
+          {
+            id: "beca_agota",
+            chance: 0.4,
+            summary: "La carga de estudiar y entrenar a la vez te dejó agotado.",
+            effects: { fitnessDelta: -6, moraleDelta: -3 },
+          },
+        ],
+      },
+      {
+        key: "rechazar_beca",
+        label: "Rechazar la beca por ahora",
+        description: "Preferís dedicarte de lleno al fútbol.",
+        outcomes: [
+          { id: "sin_cambios", chance: 1, summary: "Rechazaste la beca para dedicarte de lleno al fútbol.", effects: {} },
+        ],
+      },
+    ],
+  },
+  {
+    key: "oportunidad_suplente",
+    category: "ENTRENAMIENTO",
+    title: "La lesión de un compañero te abre una oportunidad",
+    description: "Un compañero que venía siendo titular se lesionó, y el técnico te da la chance de reemplazarlo.",
+    minAge: 16,
+    maxAge: 32,
+    weight: 6,
+    options: [
+      {
+        key: "aprovechar_oportunidad",
+        label: "Aprovechar la oportunidad a fondo",
+        description: "Te jugás por dar un salto en tu carrera con más minutos.",
+        outcomes: [
+          {
+            id: "aprovecha_bien",
+            chance: 0.6,
+            summary: "Aprovechaste el momento y te ganaste un lugar en el equipo titular.",
+            effects: { starterShareDelta: 0.15, moraleDelta: 6, reputationDelta: 5 },
+          },
+          {
+            id: "no_aprovecha",
+            chance: 0.4,
+            summary: "La presión del momento te jugó en contra y no lograste consolidarte.",
+            effects: { moraleDelta: -5, starterShareDelta: -0.05 },
+          },
+        ],
+      },
+      {
+        key: "ir_de_a_poco",
+        label: "Tomarlo con calma, de a poco",
+        description: "Preferís no forzar la situación de golpe.",
+        outcomes: [
+          { id: "sin_cambios", chance: 1, summary: "Decidiste tomarte el momento con calma, sin apurar nada.", effects: {} },
+        ],
+      },
+    ],
+  },
+  {
+    key: "pretemporada_exigente",
+    category: "ENTRENAMIENTO",
+    title: "Gira de pretemporada muy exigente",
+    description: "El club programó una gira de pretemporada exigente en un clima extremo para llegar a punto a la temporada.",
+    minAge: 16,
+    maxAge: 36,
+    weight: 5,
+    options: [
+      {
+        key: "exigir_al_maximo",
+        label: "Exigirte al máximo en cada sesión",
+        description: "Buscás llegar a tu mejor nivel físico posible.",
+        outcomes: [
+          {
+            id: "pretemporada_bien",
+            chance: 0.55,
+            summary: "Llegaste a un nivel físico excelente para el arranque de temporada.",
+            effects: { statDeltas: { physical: 3 }, fitnessDelta: 8 },
+          },
+          {
+            id: "pretemporada_mal",
+            chance: 0.45,
+            summary: "El nivel de exigencia en ese clima te pasó factura físicamente.",
+            effects: { fitnessDelta: -12, injuryWeeks: 2 },
+          },
+        ],
+      },
+      {
+        key: "dosificar_esfuerzo",
+        label: "Dosificar el esfuerzo con cuidado",
+        description: "Preferís cuidar el cuerpo antes que forzarlo.",
+        outcomes: [
+          { id: "sin_cambios", chance: 1, summary: "Dosificaste el esfuerzo y llegaste a la temporada sin sobresaltos.", effects: {} },
+        ],
+      },
+    ],
+  },
+  {
+    key: "amistoso_seleccion_menor",
+    category: "SELECCION",
+    title: "Convocatoria a un torneo regional menor",
+    description: "La selección te convoca para un torneo regional de menor prestigio, con pocos minutos de televisión.",
+    minAge: 18,
+    maxAge: 34,
+    weight: 4,
+    options: [
+      {
+        key: "responder_torneo_menor",
+        label: "Responder al llamado igual",
+        description: "Vas con todo aunque el torneo no tenga demasiada repercusión.",
+        outcomes: [
+          {
+            id: "torneo_menor_bien",
+            chance: 0.6,
+            summary: "Rendiste muy bien y ganaste minutos de rodaje internacional valiosos.",
+            effects: { statDeltas: { mentality: 1 }, reputationDelta: 4 },
+          },
+          {
+            id: "torneo_menor_mal",
+            chance: 0.4,
+            summary: "El desgaste del viaje no se vio compensado por la poca repercusión del torneo.",
+            effects: { fitnessDelta: -5, moraleDelta: -2 },
+          },
+        ],
+      },
+      {
+        key: "priorizar_descanso_club",
+        label: "Priorizar el descanso con tu club",
+        description: "Tu club prefiere cuidarte de la sobrecarga.",
+        outcomes: [
+          { id: "sin_cambios", chance: 1, summary: "Le diste prioridad al descanso con tu club.", effects: { fitnessDelta: 4 } },
+        ],
+      },
+    ],
+  },
+  {
+    key: "oferta_inversionista",
+    category: "FINANZAS",
+    title: "Un inversionista quiere comprar parte de tu pase",
+    description: "Un fondo de inversión te propone comprar un porcentaje de tu futuro pase a cambio de dinero ahora.",
+    minAge: 18,
+    maxAge: 34,
+    weight: 3,
+    options: [
+      {
+        key: "aceptar_inversion",
+        label: "Aceptar el trato",
+        description: "Cobrás una suma importante ahora, a cambio de resignar parte de una futura venta.",
+        outcomes: [
+          {
+            id: "inversion_conviene",
+            chance: 0.5,
+            summary: "El trato resultó conveniente: el dinero extra te dio tranquilidad financiera ya mismo.",
+            effects: { marketValueMultiplier: 1.05, moraleDelta: 5 },
+          },
+          {
+            id: "inversion_no_conviene",
+            chance: 0.5,
+            summary: "Con el diario del lunes, resignaste más de lo que hubiera convenido.",
+            effects: { moraleDelta: -4 },
+          },
+        ],
+      },
+      {
+        key: "rechazar_inversion",
+        label: "Rechazar el trato",
+        description: "Preferís quedarte con el 100% de tu futuro pase.",
+        outcomes: [
+          { id: "sin_cambios", chance: 1, summary: "Rechazaste el trato para no resignar nada de tu futuro pase.", effects: {} },
+        ],
+      },
+    ],
+  },
+  {
+    key: "fatiga_cronica",
+    category: "SALUD",
+    title: "Fatiga acumulada",
+    description: "Varios partidos seguidos sin descanso te tienen al borde del agotamiento físico y mental.",
+    minAge: 17,
+    maxAge: 38,
+    weight: 5,
+    options: [
+      {
+        key: "pedir_descanso",
+        label: "Pedir unos días de descanso",
+        description: "Priorizás recuperarte, aunque te puedas perder algún partido.",
+        outcomes: [
+          {
+            id: "descanso_bien",
+            chance: 0.8,
+            summary: "El descanso te vino perfecto y volviste renovado.",
+            effects: { fitnessDelta: 15, moraleDelta: 5 },
+          },
+          {
+            id: "descanso_criticas",
+            chance: 0.2,
+            summary: "Un sector de la prensa te criticó por pedir descanso en un momento clave.",
+            effects: { reputationDelta: -4 },
+          },
+        ],
+      },
+      {
+        key: "seguir_jugando_fatiga",
+        label: "Seguir jugando igual",
+        description: "Te aguantás la fatiga con tal de no perderte partidos.",
+        outcomes: [
+          {
+            id: "aguanta_fatiga",
+            chance: 0.5,
+            summary: "El cuerpo aguantó y no pasó a mayores.",
+            effects: { moraleDelta: 3 },
+          },
+          {
+            id: "colapsa_fatiga",
+            chance: 0.5,
+            summary: "La fatiga acumulada terminó pasándote factura físicamente.",
+            effects: { fitnessDelta: -15, injuryWeeks: 4 },
+          },
+        ],
+      },
+    ],
+  },
+  {
     key: "fichaje_penales",
     category: "CLUB",
     title: "Amistoso con ojeadores en la tribuna",

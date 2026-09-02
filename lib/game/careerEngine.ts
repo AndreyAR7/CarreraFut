@@ -720,7 +720,14 @@ export async function advanceSeason(careerId: string, userId: string) {
   }
 
   const seasonsPerDecision = DIFFICULTY_INFO[career.difficulty as Difficulty].seasonsPerDecision;
-  const celebrations: { name: string; tier: string }[] = [];
+  // Seeded from any celebration already sitting on the career (e.g. resolveEvent() just awarded
+  // a shootout's trophy moments ago, in the very same action) — this batch's own celebrations get
+  // appended below instead of silently overwriting it, so a decisive win/loss never gets erased
+  // by an unrelated trophy the very next season happens to produce.
+  const priorCelebration: { trophies?: { name: string; tier: string }[] } | null = career.celebrationJson
+    ? JSON.parse(career.celebrationJson)
+    : null;
+  const celebrations: { name: string; tier: string }[] = priorCelebration?.trophies ? [...priorCelebration.trophies] : [];
 
   // Individual awards should feel like the 1-2 "dream moments" of a whole career, not a yearly
   // coin flip — track how many of each the player already has (seeded once here, then updated
@@ -1277,7 +1284,12 @@ export async function advanceSeason(careerId: string, userId: string) {
   const isAbroad = finalCareer.currentClub.countryId !== finalCareer.nationalityId;
   const event = pickRandomEvent({
     age: finalCareer.age,
-    excludeKeys: [...SHOOTOUT_EVENT_KEYS, "escandalo_dopaje_estalla", "escandalo_arreglo_estalla"],
+    excludeKeys: [
+      ...SHOOTOUT_EVENT_KEYS,
+      "escandalo_dopaje_estalla",
+      "escandalo_arreglo_estalla",
+      "escandalo_apuestas_estalla",
+    ],
     isAbroad,
     seenKeys,
   });

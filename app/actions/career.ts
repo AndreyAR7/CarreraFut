@@ -9,7 +9,6 @@ import {
   createCareer,
   resolveClubOffer,
   resolveEvent,
-  SHOOTOUT_EVENT_KEYS,
 } from "@/lib/game/careerEngine";
 import { prisma } from "@/lib/prisma";
 import { DIFFICULTY_INFO, POSITIONS } from "@/lib/game/types";
@@ -68,19 +67,12 @@ export async function resolveClubOfferAction(careerId: string, optionKey: string
 
 export async function resolveEventAction(careerId: string, optionKey: string) {
   const user = await requireUser();
-  // Read the eventKey before resolveEvent() runs — it deletes the PendingEvent row as part of
-  // resolving it, so this is the last chance to know what kind of decision this was.
-  const pending = await prisma.pendingEvent.findUnique({ where: { careerId }, select: { eventKey: true } });
-  const isShootout = pending ? SHOOTOUT_EVENT_KEYS.has(pending.eventKey) : false;
-
   const outcome = await resolveEvent(careerId, user.id, optionKey);
-  // A shootout's own result (won/missed a title, promoted to a club) needs to stand on its own —
-  // immediately auto-simulating the next season here could hand out an unrelated trophy in the
-  // very same reload, making it look like the shootout itself produced it. The player advances
-  // manually afterward via the normal "Avanzar temporada" button instead.
-  if (!isShootout) {
-    await advanceSeason(careerId, user.id);
-  }
+  // advanceSeason() now merges into whatever celebration resolveEvent() just set (see
+  // careerEngine.ts) instead of overwriting it, so a shootout's own trophy/miss can never be
+  // silently replaced by an unrelated one this immediately produces — the game can stay fluid
+  // (always straight into the next decision) without that conflation bug coming back.
+  await advanceSeason(careerId, user.id);
   return outcome;
 }
 
