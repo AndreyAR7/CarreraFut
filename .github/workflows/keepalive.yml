@@ -1,0 +1,16 @@
+name: Keep Render instance awake
+
+# Render's free plan spins the app down after ~15 minutes of no traffic, and the next visitor
+# then eats a ~30-60s cold start. Pinging the live URL well under that window keeps it warm —
+# this is a free substitute for Render's own Cron Jobs, which require a paid plan.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping CarreraFUT
+        run: curl -sf --max-time 30 https://carrerafut.onrender.com > /dev/null
