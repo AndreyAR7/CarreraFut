@@ -350,7 +350,7 @@ export const EVENTS: EventDefinition[] = [
             id: "impune",
             chance: 0.45,
             summary: "Nadie se dio cuenta. Cobraste sin consecuencias... por ahora.",
-            effects: { marketValueMultiplier: 1.02, moraleDelta: -2, scandalFollowupKey: "escandalo_arreglo_estalla" },
+            effects: { marketValueMultiplier: 1.05, moraleDelta: 1, scandalFollowupKey: "escandalo_arreglo_estalla" },
           },
           {
             id: "descubierto",
@@ -368,8 +368,8 @@ export const EVENTS: EventDefinition[] = [
           {
             id: "nada",
             chance: 1,
-            summary: "Rechazaste la oferta y seguiste tu carrera con la conciencia tranquila.",
-            effects: { moraleDelta: 2, reputationDelta: 2 },
+            summary: "Rechazaste la oferta y seguiste tu carrera como si nada hubiera pasado.",
+            effects: {},
           },
         ],
       },
@@ -433,8 +433,8 @@ export const EVENTS: EventDefinition[] = [
           {
             id: "rechaza_dopaje",
             chance: 1,
-            summary: "Rechazaste la sustancia y seguiste entrenando de forma limpia.",
-            effects: { moraleDelta: 3, reputationDelta: 2 },
+            summary: "Rechazaste la sustancia y seguiste entrenando de forma limpia, sin ningún cambio.",
+            effects: {},
           },
         ],
       },

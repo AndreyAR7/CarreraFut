@@ -78,7 +78,7 @@ export function effectTone(effects: EventEffects): EffectTone {
   if (effects.awardsWorldCup) score += 20;
   if (effects.awardsContinentalTitle) score += 18;
   if (effects.promotesToBetterClub) score += 12;
-  if (effects.scandalFollowupKey) score -= 5;
+  if (effects.scandalFollowupKey) score -= 3;
   if (effects.forcesDemotionScandal) score -= 30;
 
   if (score > 1) return "positive";
