@@ -349,8 +349,8 @@ export const EVENTS: EventDefinition[] = [
           {
             id: "impune",
             chance: 0.45,
-            summary: "Nadie se dio cuenta. Cobraste sin consecuencias.",
-            effects: { marketValueMultiplier: 1.02, moraleDelta: -2 },
+            summary: "Nadie se dio cuenta. Cobraste sin consecuencias... por ahora.",
+            effects: { marketValueMultiplier: 1.02, moraleDelta: -2, scandalFollowupKey: "escandalo_arreglo_estalla" },
           },
           {
             id: "descubierto",
@@ -370,6 +370,98 @@ export const EVENTS: EventDefinition[] = [
             chance: 1,
             summary: "Rechazaste la oferta y seguiste tu carrera con la conciencia tranquila.",
             effects: { moraleDelta: 2, reputationDelta: 2 },
+          },
+        ],
+      },
+    ],
+  },
+  {
+    key: "escandalo_arreglo_estalla",
+    category: "DISCIPLINA",
+    title: "Sale a la luz el partido arreglado",
+    description:
+      "Un periodista de investigación consiguió pruebas de aquel partido que arreglaste. La noticia ya está en todos lados.",
+    minAge: 16,
+    maxAge: 41,
+    // weight: 0 — only ever forced onto the career a couple of decisions after accepting the
+    // bribe in "prueba_honestidad" and getting away with it (see pendingScandalKey).
+    weight: 0,
+    options: [
+      {
+        key: "dar_la_cara",
+        label: "Dar la cara ante la prensa",
+        description: "Ya no hay forma de esconderlo. El club decide cortar por lo sano.",
+        outcomes: [
+          {
+            id: "salida_forzada",
+            chance: 1,
+            summary: "El escándalo estalló en los medios. El club rescindió tu contrato y tuviste que salir a buscar equipo lejos de las luces.",
+            effects: { reputationDelta: -25, moraleDelta: -20, forcesDemotionScandal: true },
+          },
+        ],
+      },
+    ],
+  },
+  {
+    key: "oferta_dopaje",
+    category: "DISCIPLINA",
+    title: "Sustancias para rendir más",
+    description:
+      "Alguien del entorno del club te ofrece una sustancia prohibida para acelerar tu recuperación y rendir por encima de tu nivel.",
+    minAge: 18,
+    maxAge: 36,
+    weight: 4,
+    options: [
+      {
+        key: "aceptar_dopaje",
+        label: "Aceptarla",
+        description: "Rendís mejor ya mismo, pero es un secreto que puede explotarte en la cara más adelante.",
+        outcomes: [
+          {
+            id: "rinde",
+            chance: 1,
+            summary: "Sentiste una mejora notable en tu físico. Nadie sospecha nada... todavía.",
+            effects: { statDeltas: { physical: 3, pace: 2 }, scandalFollowupKey: "escandalo_dopaje_estalla" },
+          },
+        ],
+      },
+      {
+        key: "rechazar_dopaje",
+        label: "Rechazarla",
+        description: "Preferís no arriesgar tu carrera ni tu salud.",
+        outcomes: [
+          {
+            id: "rechaza_dopaje",
+            chance: 1,
+            summary: "Rechazaste la sustancia y seguiste entrenando de forma limpia.",
+            effects: { moraleDelta: 3, reputationDelta: 2 },
+          },
+        ],
+      },
+    ],
+  },
+  {
+    key: "escandalo_dopaje_estalla",
+    category: "DISCIPLINA",
+    title: "Estalla un escándalo de dopaje",
+    description:
+      "Un control antidopaje retroactivo detectó la sustancia que usaste hace un tiempo. La noticia ya es un escándalo internacional.",
+    minAge: 16,
+    maxAge: 41,
+    // weight: 0 — only ever forced onto the career a couple of decisions after accepting the
+    // substance in "oferta_dopaje" (see pendingScandalKey).
+    weight: 0,
+    options: [
+      {
+        key: "dar_la_cara",
+        label: "Dar la cara ante la prensa",
+        description: "El club no quiere quedar salpicado por el escándalo y decide desvincularte.",
+        outcomes: [
+          {
+            id: "salida_forzada",
+            chance: 1,
+            summary: "El escándalo de dopaje explotó en las noticias. El club te desechó para cuidar su imagen y tuviste que salir a reconstruir tu carrera en otro lado.",
+            effects: { reputationDelta: -25, moraleDelta: -20, forcesDemotionScandal: true },
           },
         ],
       },

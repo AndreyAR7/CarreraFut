@@ -1,16 +1,29 @@
 import Link from "next/link";
 import { ClubCrest } from "@/components/ClubCrest";
 import { Flag } from "@/components/Flag";
+import { TrophyDetails } from "@/components/TrophyDetails";
 import { TrophyIcon } from "@/components/TrophyIcon";
 import { crestSrc } from "@/lib/game/data/crestFiles";
 import { formatCurrency } from "@/lib/game/format";
 import { CareerDetail } from "@/lib/game/queries";
 import { POSITION_LABELS, Position, TrophyTier } from "@/lib/game/types";
 
+function overallTier(overall: number): { color: string; glow: string } {
+  if (overall >= 85) return { color: "var(--gold)", glow: "shadow-[0_0_16px_rgba(251,191,36,0.55)]" };
+  if (overall >= 75) return { color: "var(--accent)", glow: "shadow-[0_0_14px_rgba(34,197,94,0.45)]" };
+  if (overall >= 60) return { color: "var(--blue)", glow: "shadow-[0_0_12px_rgba(59,130,246,0.4)]" };
+  return { color: "var(--silver)", glow: "" };
+}
+
 export function RetiredSummary({ career }: { career: CareerDetail }) {
   const totalMatches = career.seasons.reduce((sum, s) => sum + s.matches, 0);
   const totalGoals = career.seasons.reduce((sum, s) => sum + s.goals, 0);
   const totalAssists = career.seasons.reduce((sum, s) => sum + s.assists, 0);
+  const peakOverall = Math.max(career.overall, ...career.seasons.map((s) => s.overall));
+  const peakTier = overallTier(peakOverall);
+  const trophyDetails = [...career.trophies]
+    .sort((a, b) => b.age - a.age)
+    .map((t) => ({ id: t.id, name: t.name, tier: t.tier, age: t.age }));
 
   const clubStats = new Map<
     string,
@@ -63,11 +76,26 @@ export function RetiredSummary({ career }: { career: CareerDetail }) {
             </h1>
             <p className="flex items-center gap-1.5 text-sm text-muted">
               <Flag code={career.nationality.code} title={career.nationality.name} />{" "}
-              {POSITION_LABELS[career.position as Position]} · {formatCurrency(career.marketValueEUR)}
+              {POSITION_LABELS[career.position as Position]}
             </p>
           </div>
           <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-accent text-2xl font-bold text-black">
             {career.overall}
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-3">
+          <div className="flex flex-col items-center rounded-xl bg-gold/15 px-4 py-2">
+            <p className="text-xl font-extrabold leading-none text-gold">
+              💰 {formatCurrency(career.marketValueEUR)}
+            </p>
+            <p className="mt-1 text-[10px] uppercase tracking-wide text-muted">Valor final</p>
+          </div>
+          <div className={`flex flex-col items-center rounded-xl px-4 py-2 ${peakTier.glow}`} style={{ backgroundColor: "rgba(255,255,255,0.06)" }}>
+            <p className="text-xl font-extrabold leading-none" style={{ color: peakTier.color }}>
+              📈 {peakOverall}
+            </p>
+            <p className="mt-1 text-[10px] uppercase tracking-wide text-muted">Nivel máx. alcanzado</p>
           </div>
         </div>
 
@@ -129,6 +157,15 @@ export function RetiredSummary({ career }: { career: CareerDetail }) {
             </div>
           ))}
         </div>
+
+        {trophyDetails.length > 0 && (
+          <div className="mt-6 rounded-xl bg-surface-alt p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+              🏆 Palmarés completo <span className="text-gold">({trophyDetails.length})</span>
+            </p>
+            <TrophyDetails trophies={trophyDetails} />
+          </div>
+        )}
 
         <div className="mt-8 flex flex-wrap gap-3">
           <Link

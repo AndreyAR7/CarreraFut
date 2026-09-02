@@ -1,5 +1,6 @@
 import { ClubCrest } from "@/components/ClubCrest";
 import { Flag } from "@/components/Flag";
+import { TrophyDetails } from "@/components/TrophyDetails";
 import { TrophyIcon } from "@/components/TrophyIcon";
 import { INDIVIDUAL_AWARDS } from "@/lib/game/data/awards";
 import { crestSrc } from "@/lib/game/data/crestFiles";
@@ -48,10 +49,40 @@ function Stat({ label, value }: { label: string; value: number | string }) {
   );
 }
 
+// Money and peak level get a louder, color-badged treatment than the plain PJ/Goles/Asist
+// numbers — these are the "brag" stats a player wants to actually notice at a glance.
+function HighlightStat({
+  icon,
+  label,
+  value,
+  color,
+  glow,
+}: {
+  icon: string;
+  label: string;
+  value: string | number;
+  color: string;
+  glow?: string;
+}) {
+  return (
+    <div
+      className={`flex flex-col items-center rounded-xl px-3 py-1.5 ${glow ?? ""}`}
+      style={{ backgroundColor: `color-mix(in srgb, ${color} 16%, transparent)` }}
+    >
+      <p className="text-lg font-extrabold leading-none" style={{ color }}>
+        {icon} {value}
+      </p>
+      <p className="mt-1 text-[10px] uppercase tracking-wide text-muted">{label}</p>
+    </div>
+  );
+}
+
 const Divider = () => <div className="hidden h-12 w-px shrink-0 bg-border sm:block" />;
 
 export function PlayerHeader({ career }: { career: CareerDetail }) {
   const tier = overallTier(career.overall);
+  const peakOverall = Math.max(career.overall, ...career.seasons.map((s) => s.overall));
+  const peakTier = overallTier(peakOverall);
   const totalMatches = career.seasons.reduce((sum, s) => sum + s.matches, 0);
   const totalGoals = career.seasons.reduce((sum, s) => sum + s.goals, 0);
   const totalAssists = career.seasons.reduce((sum, s) => sum + s.assists, 0);
@@ -68,11 +99,14 @@ export function PlayerHeader({ career }: { career: CareerDetail }) {
     {},
   );
   const totalTrophies = career.trophies.length;
+  const trophyDetails = [...career.trophies]
+    .sort((a, b) => b.age - a.age)
+    .map((t) => ({ id: t.id, name: t.name, tier: t.tier, age: t.age }));
 
   return (
     <div className="rounded-2xl border border-border bg-surface p-5 sm:p-6">
       <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
-        <div className="flex items-center gap-4">
+        <div className="flex min-w-0 items-center gap-4">
           <div
             className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-xl text-2xl font-extrabold text-black ${tier.glow}`}
             style={{ backgroundColor: tier.color }}
@@ -108,10 +142,21 @@ export function PlayerHeader({ career }: { career: CareerDetail }) {
               {career.currentClub?.name ?? "Sin club"}
               {career.onLoanFromId ? " (préstamo)" : ""}
             </p>
-            <p className="text-xs text-muted">
-              🎂 {career.age} años · 💰 {formatCurrency(career.marketValueEUR)}
-            </p>
+            <p className="text-xs text-muted">🎂 {career.age} años</p>
           </div>
+        </div>
+
+        <Divider />
+
+        <div className="flex items-center gap-3">
+          <HighlightStat icon="💰" label="Valor" value={formatCurrency(career.marketValueEUR)} color="var(--gold)" />
+          <HighlightStat
+            icon="📈"
+            label="Nivel máx."
+            value={peakOverall}
+            color={peakTier.color}
+            glow={peakTier.glow}
+          />
         </div>
 
         <Divider />
@@ -121,10 +166,10 @@ export function PlayerHeader({ career }: { career: CareerDetail }) {
           <Stat label="⚽ Goles" value={totalGoals} />
           <Stat label="🎯 Asist." value={totalAssists} />
         </div>
+      </div>
 
-        <Divider />
-
-        <div className="flex min-w-0 flex-1 items-center gap-3">
+      <div className="mt-4 border-t border-border pt-4">
+        <div className="flex flex-wrap items-center gap-3">
           <p className="shrink-0 text-xs font-semibold uppercase tracking-wide text-muted">
             🏆 Palmarés {totalTrophies > 0 && <span className="text-gold">({totalTrophies})</span>}
           </p>
@@ -144,6 +189,7 @@ export function PlayerHeader({ career }: { career: CareerDetail }) {
             <span className="text-sm text-muted">Todavía sin títulos</span>
           )}
         </div>
+        <TrophyDetails trophies={trophyDetails} />
       </div>
     </div>
   );

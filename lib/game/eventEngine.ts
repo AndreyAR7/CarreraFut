@@ -5,6 +5,8 @@ export interface EventContext {
   age: number;
   excludeKeys?: string[];
   isAbroad?: boolean;
+  /** Event keys this career has already seen — pickRandomEvent avoids repeating them. */
+  seenKeys?: Set<string>;
 }
 
 export function eligibleEvents(context: EventContext): EventDefinition[] {
@@ -18,9 +20,7 @@ export function eligibleEvents(context: EventContext): EventDefinition[] {
   );
 }
 
-export function pickRandomEvent(context: EventContext): EventDefinition | null {
-  const pool = eligibleEvents(context);
-  if (pool.length === 0) return null;
+function weightedPick(pool: EventDefinition[]): EventDefinition {
   const totalWeight = pool.reduce((sum, e) => sum + e.weight, 0);
   let roll = Math.random() * totalWeight;
   for (const event of pool) {
@@ -28,6 +28,19 @@ export function pickRandomEvent(context: EventContext): EventDefinition | null {
     if (roll <= 0) return event;
   }
   return pool[pool.length - 1];
+}
+
+export function pickRandomEvent(context: EventContext): EventDefinition | null {
+  const pool = eligibleEvents(context);
+  if (pool.length === 0) return null;
+
+  // Same question shouldn't come up again and again — prefer an event this career hasn't seen
+  // yet, only allowing a repeat about 1 in 10 times (and only once the unseen pool is empty does
+  // a repeat become unavoidable).
+  const seen = context.seenKeys ?? new Set<string>();
+  const unseen = pool.filter((event) => !seen.has(event.key));
+  const useUnseen = unseen.length > 0 && Math.random() < 0.9;
+  return weightedPick(useUnseen ? unseen : pool);
 }
 
 export function getEventByKey(key: string): EventDefinition | undefined {

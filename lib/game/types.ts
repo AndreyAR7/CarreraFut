@@ -162,6 +162,14 @@ export interface EventEffects {
   awardsContinentalTitle?: boolean;
   /** Only used by the signing-trial penalty-shootout decision — moves the player to a better club. */
   promotesToBetterClub?: boolean;
+  /**
+   * A risky choice that isn't punished immediately — names the follow-up event key to force onto
+   * the career 2-3 decisions later (see pendingScandalKey/pendingScandalSeasonsLeft), instead of
+   * an EventEffects consequence applied right away.
+   */
+  scandalFollowupKey?: string;
+  /** Only used by a scandal's follow-up event — forces the player out to a worse club. */
+  forcesDemotionScandal?: boolean;
 }
 
 export interface EventOutcome {

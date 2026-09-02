@@ -38,6 +38,18 @@ export function describeEffects(effects: EventEffects): string {
   if (effects.awardsWorldCup) {
     parts.push("🏆 Título del Mundial");
   }
+  if (effects.awardsContinentalTitle) {
+    parts.push("🏆 Título continental");
+  }
+  if (effects.promotesToBetterClub) {
+    parts.push("📈 Pasás a un club mejor");
+  }
+  if (effects.scandalFollowupKey) {
+    parts.push("⚠️ Puede tener consecuencias más adelante");
+  }
+  if (effects.forcesDemotionScandal) {
+    parts.push("📉 Salida forzada del club");
+  }
 
   return parts.length > 0 ? parts.join(" · ") : "Sin cambios";
 }
@@ -64,6 +76,10 @@ export function effectTone(effects: EventEffects): EffectTone {
   if (effects.reputationDelta) score += effects.reputationDelta;
   if (effects.starterShareDelta) score += effects.starterShareDelta * 100 * 0.5;
   if (effects.awardsWorldCup) score += 20;
+  if (effects.awardsContinentalTitle) score += 18;
+  if (effects.promotesToBetterClub) score += 12;
+  if (effects.scandalFollowupKey) score -= 5;
+  if (effects.forcesDemotionScandal) score -= 30;
 
   if (score > 1) return "positive";
   if (score < -1) return "negative";

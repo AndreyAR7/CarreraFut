@@ -11,7 +11,7 @@ import { domesticCupName, INDIVIDUAL_AWARDS } from "./data/awards";
 import { continentalTrophyName, countryCodesInConfederation } from "./data/confederations";
 import { eligibleEvents, getEventByKey, getOption, pickRandomEvent, resolveOutcome } from "./eventEngine";
 import { describeEffects, EffectTone, effectTone } from "./format";
-import { randomInt, sampleN } from "./random";
+import { randomInt, sampleN, sampleWeighted } from "./random";
 import {
   decisiveShootoutChance,
   NationalTeamSimResult,
@@ -147,6 +147,26 @@ const DOMESTIC_ONLY_TRANSITIONS = 3;
 // meant to read as "build your name across the Americas first, Europe is the payoff move."
 const EUROPE_OVERALL_THRESHOLD = 65;
 
+// The handful of European "dream" clubs a player is actually hoping to see once they're good
+// enough — without a boost these compete on equal footing with every other reputation-5 club in
+// the sampling pool (River, Boca, Flamengo, Palmeiras...), so in practice they could go many
+// careers without ever coming up even once the player is clearly good enough for them.
+const ELITE_CLUB_KEYS = new Set([
+  "realmadrid",
+  "barcelona",
+  "mancity",
+  "manutd",
+  "liverpool",
+  "bayern",
+  "juventus",
+  "inter",
+  "psg",
+]);
+
+function clubOfferWeight(club: { key: string }): number {
+  return ELITE_CLUB_KEYS.has(club.key) ? 4 : 1;
+}
+
 async function countClubTransitions(careerId: string): Promise<number> {
   return prisma.careerEventLog.count({ where: { careerId, eventKey: { in: CLUB_OFFER_KINDS } } });
 }
@@ -193,29 +213,34 @@ async function generateTransferOffer(
   nationalityId: string,
   domesticOnly: boolean,
   allowEurope: boolean,
-  opts: { decline?: boolean } = {},
+  opts: { decline?: boolean; forceElite?: boolean } = {},
 ) {
   const decline = opts.decline ?? false;
+  const forceElite = opts.forceElite ?? false;
   const currentClub = await prisma.club.findUniqueOrThrow({ where: { id: currentClubId } });
   const targetBand = Math.max(1, Math.min(5, Math.round(overall / 20)));
   // Most transfer offers are a step up rather than sideways/down — a career should feel like it's
   // building toward something. Occasionally allow a band-down option too, for realism. A decline
-  // offer flips this: every option is a step DOWN, steering a veteran toward the exit instead.
+  // offer flips this: every option is a step DOWN, steering a veteran toward the exit instead. A
+  // forced elite offer (reward for a hot streak) always aims straight at the very top band.
   const biasUp = !decline && Math.random() < 0.7;
-  const minBand = decline ? 1 : biasUp ? targetBand : Math.max(1, targetBand - 1);
-  const maxBand = decline ? Math.max(1, targetBand - 1) : Math.min(5, targetBand + 1);
+  const minBand = decline ? 1 : forceElite ? 4 : biasUp ? targetBand : Math.max(1, targetBand - 1);
+  const maxBand = decline ? Math.max(1, targetBand - 1) : forceElite ? 5 : Math.min(5, targetBand + 1);
   const candidates = await findClubCandidates({
     excludeClubIds: [currentClubId],
     minReputation: minBand,
     maxReputation: maxBand,
-    domesticOnly,
+    domesticOnly: forceElite ? false : domesticOnly,
     nationalityId,
-    allowEurope,
+    allowEurope: forceElite ? true : allowEurope,
     minCount: 2,
   });
   if (candidates.length === 0) return false;
 
-  const chosen = sampleN(candidates, 2);
+  // Weighted so a handful of marquee European clubs (Real Madrid, Barcelona...) show up
+  // noticeably more often than an equally-reputable but less iconic peer, once eligible — see
+  // ELITE_CLUB_KEYS.
+  const chosen = sampleWeighted(candidates, clubOfferWeight, 2);
   const europeCodes = countryCodesInConfederation("UEFA");
   const includesEuropeanOffer = chosen.some((club) => europeCodes.includes(club.country.code));
   const options: ClubOfferOption[] = chosen.map((club, index) => ({
@@ -504,12 +529,39 @@ export async function resolveEvent(
       allowEurope: nextOverall >= EUROPE_OVERALL_THRESHOLD,
       minCount: 1,
     });
-    promotionClub = sampleN(candidates, 1)[0] ?? null;
+    promotionClub = sampleWeighted(candidates, clubOfferWeight, 1)[0] ?? null;
   }
+
+  // A scandal breaking (see pendingScandalKey) forces the player OUT to a noticeably worse club
+  // and a real market-value hit — the mirror image of promotesToBetterClub.
+  let demotionClub: Awaited<ReturnType<typeof prisma.club.findFirstOrThrow>> | null = null;
+  if (outcome.effects.forcesDemotionScandal && career.currentClub) {
+    const candidates = await findClubCandidates({
+      excludeClubIds: [career.currentClub.id],
+      minReputation: 1,
+      maxReputation: Math.max(1, career.currentClub.reputation - 1),
+      domesticOnly: true,
+      nationalityId: career.nationalityId,
+      allowEurope: false,
+      minCount: 1,
+    });
+    demotionClub = sampleN(candidates, 1)[0] ?? null;
+  }
+
+  const clubChangeMarketMultiplier = promotionClub ? 1.1 : demotionClub ? 0.6 : 1;
 
   const celebrationTrophies: { name: string; tier: string }[] = [];
   if (wonWorldCup) celebrationTrophies.push({ name: `Mundial (${career.nationality.name})`, tier: "WORLD" });
   if (wonContinentalTitle) celebrationTrophies.push({ name: continentalCelebrationName!, tier: "CONTINENTAL" });
+
+  // A "positive"-toned narrative decision extends the streak; anything else resets it. Reaching 3
+  // rewards the player with a forced elite-club offer (see advanceSeason) and resets back to 0.
+  const outcomeTone = effectTone(outcome.effects);
+  const nextPositiveStreak = outcomeTone === "positive" ? career.positiveDecisionStreak + 1 : 0;
+
+  // A risky choice schedules its fallout for a couple of decisions later instead of applying it
+  // now; resolving THIS event never itself clears a countdown some earlier decision already set.
+  const scandalFollowupKey = outcome.effects.scandalFollowupKey;
 
   await prisma.$transaction([
     prisma.playerCareer.update({
@@ -521,9 +573,14 @@ export async function resolveEvent(
         fitness: nextFitness,
         starterShare: nextStarterShare,
         reputation: nextReputation,
-        marketValueEUR: promotionClub ? Math.round(nextMarketValue * 1.1) : nextMarketValue,
+        marketValueEUR: Math.round(nextMarketValue * clubChangeMarketMultiplier),
         pendingMatchPenalty: career.pendingMatchPenalty + matchPenalty,
+        positiveDecisionStreak: nextPositiveStreak,
         ...(promotionClub ? { currentClubId: promotionClub.id, starterShare: 0.55 } : {}),
+        ...(demotionClub ? { currentClubId: demotionClub.id, starterShare: 0.5 } : {}),
+        ...(scandalFollowupKey
+          ? { pendingScandalKey: scandalFollowupKey, pendingScandalSeasonsLeft: randomInt(2, 3) }
+          : {}),
         ...(celebrationTrophies.length > 0 ? { celebrationJson: JSON.stringify({ trophies: celebrationTrophies }) } : {}),
       },
     }),
@@ -952,6 +1009,34 @@ export async function advanceSeason(careerId: string, userId: string) {
   });
   if (finalCareer.status !== "ACTIVE" || !finalCareer.currentClubId || !finalCareer.currentClub) return;
 
+  // A scandal scheduled a couple of decisions ago (see pendingScandalKey) takes priority over
+  // everything else once its countdown runs out — the fallout has to actually land.
+  if (finalCareer.pendingScandalKey) {
+    const remaining = (finalCareer.pendingScandalSeasonsLeft ?? 1) - 1;
+    if (remaining <= 0) {
+      const scandalEvent = getEventByKey(finalCareer.pendingScandalKey)!;
+      await prisma.playerCareer.update({
+        where: { id: careerId },
+        data: { pendingScandalKey: null, pendingScandalSeasonsLeft: null },
+      });
+      await prisma.pendingEvent.create({
+        data: {
+          careerId,
+          age: finalCareer.age,
+          eventKey: scandalEvent.key,
+          title: scandalEvent.title,
+          description: scandalEvent.description,
+          optionsJson: JSON.stringify(buildEventOptionsPayload(scandalEvent)),
+        },
+      });
+      return;
+    }
+    await prisma.playerCareer.update({
+      where: { id: careerId },
+      data: { pendingScandalSeasonsLeft: remaining },
+    });
+  }
+
   if (finalCareer.onLoanFromId) {
     await generateLoanReturnOffer(
       careerId,
@@ -990,6 +1075,24 @@ export async function advanceSeason(careerId: string, userId: string) {
       true,
       false,
       { decline: true },
+    );
+    if (created) return;
+  }
+
+  // 3 "positive"-toned decisions in a row is a real hot streak — reward it with a guaranteed
+  // offer from one of the very top clubs instead of the usual banded roll. Always consumes the
+  // streak, even if no elite candidate turns out to be available, so it can't retrigger forever.
+  if (finalCareer.positiveDecisionStreak >= 3) {
+    await prisma.playerCareer.update({ where: { id: careerId }, data: { positiveDecisionStreak: 0 } });
+    const created = await generateTransferOffer(
+      careerId,
+      finalCareer.age,
+      finalCareer.currentClubId,
+      finalCareer.overall,
+      finalCareer.nationalityId,
+      false,
+      true,
+      { forceElite: true },
     );
     if (created) return;
   }
@@ -1056,11 +1159,21 @@ export async function advanceSeason(careerId: string, userId: string) {
     if (created) return;
   }
 
+  // Same question showing up again and again felt repetitive — bias event selection toward
+  // whatever this career hasn't already seen (see pickRandomEvent's own ~90/10 split).
+  const seenEventRows = await prisma.careerEventLog.findMany({
+    where: { careerId, eventKey: { notIn: CLUB_OFFER_KINDS } },
+    distinct: ["eventKey"],
+    select: { eventKey: true },
+  });
+  const seenKeys = new Set(seenEventRows.map((row) => row.eventKey));
+
   const isAbroad = finalCareer.currentClub.countryId !== finalCareer.nationalityId;
   const event = pickRandomEvent({
     age: finalCareer.age,
-    excludeKeys: ["mundial_penales", "champions_penales", "fichaje_penales"],
+    excludeKeys: ["mundial_penales", "champions_penales", "fichaje_penales", "escandalo_dopaje_estalla", "escandalo_arreglo_estalla"],
     isAbroad,
+    seenKeys,
   });
   if (!event) return;
 

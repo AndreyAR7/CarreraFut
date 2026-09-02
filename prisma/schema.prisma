@@ -112,6 +112,16 @@ model PlayerCareer {
   ntGoals   Int @default(0)
   ntAssists Int @default(0)
 
+  // Consecutive narrative-event decisions resolved with a "positive" tone (see effectTone) —
+  // reaching 3 rewards the player with a forced elite-club transfer offer, then resets to 0.
+  positiveDecisionStreak Int @default(0)
+
+  // A risky choice (e.g. accepting doping, an undetected bribe) can set these instead of an
+  // immediate consequence — pendingScandalKey names the follow-up event to force once
+  // pendingScandalSeasonsLeft counts down to 0, so the fallout lands 2-3 decisions later.
+  pendingScandalKey         String?
+  pendingScandalSeasonsLeft Int?
+
   celebrationJson String?
 
   createdAt DateTime @default(now())
