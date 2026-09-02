@@ -41,6 +41,9 @@ export function describeEffects(effects: EventEffects): string {
   if (effects.awardsContinentalTitle) {
     parts.push("🏆 Título continental");
   }
+  if (effects.awardsDomesticCupTitle) {
+    parts.push("🏆 Título de copa");
+  }
   if (effects.promotesToBetterClub) {
     parts.push("📈 Pasás a un club mejor");
   }
@@ -77,6 +80,7 @@ export function effectTone(effects: EventEffects): EffectTone {
   if (effects.starterShareDelta) score += effects.starterShareDelta * 100 * 0.5;
   if (effects.awardsWorldCup) score += 20;
   if (effects.awardsContinentalTitle) score += 18;
+  if (effects.awardsDomesticCupTitle) score += 15;
   if (effects.promotesToBetterClub) score += 12;
   if (effects.scandalFollowupKey) score -= 3;
   if (effects.forcesDemotionScandal) score -= 30;

@@ -230,6 +230,313 @@ export const EVENTS: EventDefinition[] = [
     ],
   },
   {
+    key: "copa_penales",
+    category: "CLUB",
+    title: "Definición por penales en la final de copa",
+    description:
+      "La final de copa se define desde los doce pasos. El capitán te mira: ¿pateás uno de los definitivos?",
+    minAge: 16,
+    maxAge: 41,
+    // weight: 0 — only ever triggered directly from advanceSeason() when a domestic cup final
+    // comes down to a decisive shootout.
+    weight: 0,
+    options: [
+      {
+        key: "izquierda",
+        label: "⬅️ Rematar a la izquierda",
+        description: "Buscás el palo izquierdo: más difícil de alcanzar para el arquero, pero también más fácil de errar.",
+        outcomes: [
+          {
+            id: "gol",
+            chance: 0.55,
+            summary: "¡La clavaste en el palo izquierdo! Tu equipo se consagra campeón de la copa y sos la gran figura de la final.",
+            effects: { reputationDelta: 15, marketValueMultiplier: 1.08, moraleDelta: 12, awardsDomesticCupTitle: true },
+          },
+          {
+            id: "atajada",
+            chance: 0.2,
+            summary: "El arquero rival se estiró entero y te la adivinó. Tu equipo se queda sin la copa y el golpe te pesa.",
+            effects: { reputationDelta: -12, moraleDelta: -12 },
+          },
+          {
+            id: "afuera",
+            chance: 0.25,
+            summary: "La tiraste afuera, por izquierda. Tu equipo se queda sin la copa en la peor forma posible.",
+            effects: { reputationDelta: -14, moraleDelta: -14 },
+          },
+        ],
+      },
+      {
+        key: "centro",
+        label: "⬆️ Rematar al centro",
+        description: "Vas al medio: rara vez se te va afuera, pero es más fácil que el arquero se quede parado y la ataje.",
+        outcomes: [
+          {
+            id: "gol",
+            chance: 0.45,
+            summary: "¡La clavaste al medio! Tu equipo se consagra campeón de la copa y sos la gran figura de la final.",
+            effects: { reputationDelta: 15, marketValueMultiplier: 1.08, moraleDelta: 12, awardsDomesticCupTitle: true },
+          },
+          {
+            id: "atajada",
+            chance: 0.4,
+            summary: "El arquero ni se movió, se quedó parado y te la atajó. Tu equipo se queda sin la copa y el golpe te pesa.",
+            effects: { reputationDelta: -12, moraleDelta: -12 },
+          },
+          {
+            id: "afuera",
+            chance: 0.15,
+            summary: "La tiraste afuera por el medio. Tu equipo se queda sin la copa en la peor forma posible.",
+            effects: { reputationDelta: -14, moraleDelta: -14 },
+          },
+        ],
+      },
+      {
+        key: "derecha",
+        label: "➡️ Rematar a la derecha",
+        description: "Buscás el palo derecho: más difícil de alcanzar para el arquero, pero también más fácil de errar.",
+        outcomes: [
+          {
+            id: "gol",
+            chance: 0.55,
+            summary: "¡La clavaste en el palo derecho! Tu equipo se consagra campeón de la copa y sos la gran figura de la final.",
+            effects: { reputationDelta: 15, marketValueMultiplier: 1.08, moraleDelta: 12, awardsDomesticCupTitle: true },
+          },
+          {
+            id: "atajada",
+            chance: 0.2,
+            summary: "El arquero rival se estiró entero y te la adivinó. Tu equipo se queda sin la copa y el golpe te pesa.",
+            effects: { reputationDelta: -12, moraleDelta: -12 },
+          },
+          {
+            id: "afuera",
+            chance: 0.25,
+            summary: "La tiraste afuera, por derecha. Tu equipo se queda sin la copa en la peor forma posible.",
+            effects: { reputationDelta: -14, moraleDelta: -14 },
+          },
+        ],
+      },
+      {
+        key: "ceder",
+        label: "Dejar que patee otro",
+        description: "Preferís no cargar con la responsabilidad y dejás el resultado en manos de un compañero.",
+        outcomes: [
+          {
+            id: "gol",
+            chance: 0.5,
+            summary: "Tu compañero convierte y el equipo se consagra campeón de la copa.",
+            effects: { reputationDelta: 3, moraleDelta: 4, awardsDomesticCupTitle: true },
+          },
+          {
+            id: "atajada",
+            chance: 0.3,
+            summary: "Al arquero rival le adivinaron el remate. El equipo se queda sin la copa, aunque nadie te señala a vos.",
+            effects: { moraleDelta: -3 },
+          },
+          {
+            id: "afuera",
+            chance: 0.2,
+            summary: "Tu compañero la tiró afuera. El equipo se queda sin la copa, aunque nadie te señala a vos.",
+            effects: { moraleDelta: -3 },
+          },
+        ],
+      },
+    ],
+  },
+  {
+    key: "capitania_moral",
+    category: "PERSONAL",
+    title: "Te ganaste el vestuario",
+    description:
+      "Tu compromiso y tu buena onda constante no pasaron desapercibidos: el cuerpo técnico te ofrece la cinta de capitán.",
+    minAge: 16,
+    maxAge: 41,
+    // weight: 0 — only ever triggered directly from advanceSeason() the first time the
+    // player's morale reaches 80+ (see careerEngine.ts), never picked at random.
+    weight: 0,
+    options: [
+      {
+        key: "aceptar_cinta_moral",
+        label: "Aceptar la cinta",
+        description: "Asumís el liderazgo del plantel.",
+        outcomes: [
+          {
+            id: "lider_moral",
+            chance: 0.75,
+            summary: "Tu buen momento anímico se trasladó al liderazgo: el grupo respondió de gran manera a la cinta.",
+            effects: { statDeltas: { mentality: 3 }, reputationDelta: 10 },
+          },
+          {
+            id: "peso_extra_moral",
+            chance: 0.25,
+            summary: "La responsabilidad extra, justo en tu mejor momento anímico, te generó algo más de presión de la esperada.",
+            effects: { moraleDelta: -4 },
+          },
+        ],
+      },
+      {
+        key: "declinar_cinta_moral",
+        label: "Declinar por ahora",
+        description: "Preferís enfocarte solo en tu juego.",
+        outcomes: [
+          { id: "sin_cambios", chance: 1, summary: "Preferiste no asumir esa responsabilidad todavía.", effects: {} },
+        ],
+      },
+    ],
+  },
+  {
+    key: "invitacion_reality",
+    category: "MEDIA",
+    title: "Invitación a un reality show",
+    description: "Un programa de telerrealidad te invita a participar durante la pretemporada.",
+    minAge: 18,
+    maxAge: 34,
+    weight: 5,
+    options: [
+      {
+        key: "participar_reality",
+        label: "Participar",
+        description: "Ganás exposición mediática, pero te resta foco en lo deportivo.",
+        outcomes: [
+          {
+            id: "exito_reality",
+            chance: 0.5,
+            summary: "Caíste súper bien en cámara y tu popularidad creció fuerte.",
+            effects: { reputationDelta: 12, marketValueMultiplier: 1.04 },
+          },
+          {
+            id: "distraccion_reality",
+            chance: 0.5,
+            summary: "El ida y vuelta con las cámaras te sacó concentración de la pretemporada.",
+            effects: { statDeltas: { physical: -2 }, moraleDelta: -3 },
+          },
+        ],
+      },
+      {
+        key: "rechazar_reality",
+        label: "Rechazar la invitación",
+        description: "Preferís enfocarte de lleno en la pretemporada.",
+        outcomes: [
+          { id: "sin_cambios", chance: 1, summary: "Rechazaste la propuesta y seguiste con tu preparación normal.", effects: {} },
+        ],
+      },
+    ],
+  },
+  {
+    key: "partido_solidario",
+    category: "PERSONAL",
+    title: "Partido a beneficio",
+    description: "Te invitan a jugar un amistoso solidario días antes de un partido importante.",
+    minAge: 17,
+    maxAge: 38,
+    weight: 4,
+    options: [
+      {
+        key: "jugar_solidario",
+        label: "Jugar el amistoso",
+        description: "Ayudás a la causa, aunque te arriesgás a llegar cansado al partido importante.",
+        outcomes: [
+          {
+            id: "bien_solidario",
+            chance: 0.6,
+            summary: "El gesto solidario fue muy valorado y llegaste bien al partido importante.",
+            effects: { reputationDelta: 9, moraleDelta: 5 },
+          },
+          {
+            id: "mal_solidario",
+            chance: 0.4,
+            summary: "Llegaste con las piernas pesadas al partido importante por el desgaste extra.",
+            effects: { fitnessDelta: -8 },
+          },
+        ],
+      },
+      {
+        key: "declinar_solidario",
+        label: "Declinar la invitación",
+        description: "Preferís cuidarte para el partido importante.",
+        outcomes: [
+          { id: "sin_cambios", chance: 1, summary: "Declinaste la invitación para llegar descansado.", effects: {} },
+        ],
+      },
+    ],
+  },
+  {
+    key: "cambio_posicion",
+    category: "ENTRENAMIENTO",
+    title: "El técnico te pide jugar en otra posición",
+    description: "El cuerpo técnico necesita que ocupes un rol distinto al tuyo habitual por unas semanas.",
+    minAge: 17,
+    maxAge: 34,
+    weight: 5,
+    options: [
+      {
+        key: "aceptar_cambio",
+        label: "Aceptar el cambio",
+        description: "Te adaptás al pedido del técnico, aunque no sea tu rol natural.",
+        outcomes: [
+          {
+            id: "versatil",
+            chance: 0.5,
+            summary: "Mostraste versatilidad y el técnico valoró muchísimo tu buena predisposición.",
+            effects: { statDeltas: { mentality: 2 }, reputationDelta: 6 },
+          },
+          {
+            id: "incomodo",
+            chance: 0.5,
+            summary: "Te sentiste incómodo fuera de tu posición natural y bajó tu rendimiento.",
+            effects: { moraleDelta: -5, statDeltas: { mentality: -1 } },
+          },
+        ],
+      },
+      {
+        key: "pedir_posicion_natural",
+        label: "Pedir seguir en tu posición natural",
+        description: "Preferís no arriesgar tu rendimiento habitual.",
+        outcomes: [
+          { id: "sin_cambios", chance: 1, summary: "El técnico respetó tu pedido y seguiste en tu posición de siempre.", effects: {} },
+        ],
+      },
+    ],
+  },
+  {
+    key: "prestamo_familiar",
+    category: "FINANZAS",
+    title: "Un familiar te pide un préstamo",
+    description: "Un familiar cercano te pide plata prestada para salir de un apuro económico.",
+    minAge: 18,
+    maxAge: 38,
+    weight: 4,
+    options: [
+      {
+        key: "prestar_plata",
+        label: "Prestarle el dinero",
+        description: "Ayudás a tu familia, aunque no hay garantías de que te lo devuelvan.",
+        outcomes: [
+          {
+            id: "devuelve",
+            chance: 0.5,
+            summary: "Tu familiar te devolvió todo a tiempo y el vínculo familiar se fortaleció.",
+            effects: { moraleDelta: 8 },
+          },
+          {
+            id: "no_devuelve",
+            chance: 0.5,
+            summary: "Tu familiar nunca te devolvió el dinero y quedó un poco de tensión en la familia.",
+            effects: { moraleDelta: -6, marketValueMultiplier: 0.99 },
+          },
+        ],
+      },
+      {
+        key: "no_prestar",
+        label: "No prestarle el dinero",
+        description: "Preferís cuidar tus finanzas, aunque genere un mal momento.",
+        outcomes: [
+          { id: "sin_cambios", chance: 1, summary: "Decidiste no prestar el dinero para cuidar tus finanzas.", effects: {} },
+        ],
+      },
+    ],
+  },
+  {
     key: "fichaje_penales",
     category: "CLUB",
     title: "Amistoso con ojeadores en la tribuna",

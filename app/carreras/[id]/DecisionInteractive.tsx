@@ -52,7 +52,12 @@ const CATEGORY_ICONS: Record<EventCategory, string> = {
 
 // Events resolved with the goal-frame penalty animation instead of the generic outcome-chip
 // list — every outcome id across these events is one of GOAL/SAVED/MISSED below.
-const SHOOTOUT_EVENT_KEYS = new Set(["mundial_penales", "champions_penales", "fichaje_penales"]);
+const SHOOTOUT_EVENT_KEYS = new Set([
+  "mundial_penales",
+  "champions_penales",
+  "copa_penales",
+  "fichaje_penales",
+]);
 const SHOOTOUT_OUTCOME_KIND: Record<string, ShootoutOutcomeKind> = {
   gol: "GOAL",
   atajada: "SAVED",

@@ -95,18 +95,33 @@ export async function createCareer(userId: string, input: CreateCareerInput) {
     },
   });
 
-  const youthClubs = await prisma.club.findMany({
+  // The very first decision of a career should always be picking a club from your own
+  // country — widen the reputation band within that country before ever considering a foreign
+  // club, so "cantera" only reaches abroad for the couple of countries too small to field 3
+  // clubs of their own at all (every country in the seed data has at least 3 total).
+  const clubInclude = { league: true, country: true } as const;
+  let domesticClubs = await prisma.club.findMany({
     where: { countryId: input.nationalityId, reputation: { lte: 2 } },
-    include: { league: true, country: true },
+    include: clubInclude,
   });
+  for (const maxReputation of [3, 4, 5]) {
+    if (domesticClubs.length >= 3) break;
+    domesticClubs = await prisma.club.findMany({
+      where: { countryId: input.nationalityId, reputation: { lte: maxReputation } },
+      include: clubInclude,
+    });
+  }
 
   const fallbackClubs =
-    youthClubs.length >= 3
-      ? youthClubs
-      : await prisma.club.findMany({
-          where: { reputation: { lte: 2 } },
-          include: { league: true, country: true },
-        });
+    domesticClubs.length >= 3
+      ? domesticClubs
+      : [
+          ...domesticClubs,
+          ...(await prisma.club.findMany({
+            where: { countryId: { not: input.nationalityId }, reputation: { lte: 2 } },
+            include: { league: true, country: true },
+          })),
+        ];
 
   const chosen = sampleN(fallbackClubs, 3);
   const options: ClubOfferOption[] = chosen.map((club, index) => ({
@@ -147,7 +162,12 @@ const CLUB_OFFER_KINDS: ClubOfferKind[] = ["CANTERA", "TRANSFER", "LOAN_OUT", "L
 // advanceSeason() call for these (see app/actions/career.ts), because that immediate next-season
 // simulation could hand out an unrelated trophy in the very same reload a missed penalty shows
 // on, making it look like the shootout itself was won.
-export const SHOOTOUT_EVENT_KEYS = new Set(["mundial_penales", "champions_penales", "fichaje_penales"]);
+export const SHOOTOUT_EVENT_KEYS = new Set([
+  "mundial_penales",
+  "champions_penales",
+  "copa_penales",
+  "fichaje_penales",
+]);
 const DOMESTIC_ONLY_TRANSITIONS = 3;
 // Below this overall, European (UEFA) clubs simply aren't in the running yet — the career is
 // meant to read as "build your name across the Americas first, Europe is the payoff move."
@@ -521,6 +541,10 @@ export async function resolveEvent(
   const continentalCelebrationName = wonContinentalTitle
     ? `${continentalTrophyName(career.currentClub!.country.code)} (${career.currentClub!.name})`
     : null;
+  const wonDomesticCupTitle = Boolean(outcome.effects.awardsDomesticCupTitle) && Boolean(career.currentClub);
+  const domesticCupCelebrationName = wonDomesticCupTitle
+    ? `${domesticCupName(career.currentClub!.country.code)} (${career.currentClub!.name})`
+    : null;
 
   // A won signing-trial shootout moves the player to a better club immediately — same shape as
   // a regular transfer, just auto-accepted since the player already "earned" it with the kick.
@@ -559,6 +583,7 @@ export async function resolveEvent(
   const celebrationTrophies: { name: string; tier: string }[] = [];
   if (wonWorldCup) celebrationTrophies.push({ name: `Mundial (${career.nationality.name})`, tier: "WORLD" });
   if (wonContinentalTitle) celebrationTrophies.push({ name: continentalCelebrationName!, tier: "CONTINENTAL" });
+  if (wonDomesticCupTitle) celebrationTrophies.push({ name: domesticCupCelebrationName!, tier: "DOMESTIC_CUP" });
 
   // A "positive"-toned narrative decision extends the streak; anything else resets it. Reaching 3
   // rewards the player with a forced elite-club offer (see advanceSeason) and resets back to 0.
@@ -624,6 +649,19 @@ export async function resolveEvent(
               age: pending.age,
               name: continentalCelebrationName!,
               tier: "CONTINENTAL",
+              clubId: career.currentClubId,
+            },
+          }),
+        ]
+      : []),
+    ...(wonDomesticCupTitle
+      ? [
+          prisma.trophy.create({
+            data: {
+              careerId,
+              age: pending.age,
+              name: domesticCupCelebrationName!,
+              tier: "DOMESTIC_CUP",
               clubId: career.currentClubId,
             },
           }),
@@ -790,6 +828,25 @@ export async function advanceSeason(careerId: string, userId: string) {
       if (Math.random() < continentalShootoutChance) {
         continentalShootoutTriggered = true;
         result.continentalTitleWon = false;
+      }
+    }
+
+    // And for a domestic cup final — a cup run reaching the final is common enough that this
+    // needs its own, lower, chance so it doesn't fire alongside the other two too often.
+    let cupShootoutTriggered = false;
+    if (
+      !retiring &&
+      !shootoutTriggered &&
+      !continentalShootoutTriggered &&
+      (result.cupResult === "FINAL" || result.cupResult === "CAMPEON")
+    ) {
+      const cupShootoutChance = decisiveShootoutChance({
+        overall,
+        countryFootballPower: career.currentClub.reputation,
+      }) * 0.6;
+      if (Math.random() < cupShootoutChance) {
+        cupShootoutTriggered = true;
+        result.cupTitleWon = false;
       }
     }
 
@@ -1000,6 +1057,27 @@ export async function advanceSeason(careerId: string, userId: string) {
       }
       return;
     }
+
+    if (cupShootoutTriggered) {
+      const shootoutEvent = getEventByKey("copa_penales")!;
+      await prisma.pendingEvent.create({
+        data: {
+          careerId,
+          age: nextAge,
+          eventKey: shootoutEvent.key,
+          title: shootoutEvent.title,
+          description: shootoutEvent.description,
+          optionsJson: JSON.stringify(buildEventOptionsPayload(shootoutEvent)),
+        },
+      });
+      if (celebrations.length > 0) {
+        await prisma.playerCareer.update({
+          where: { id: careerId },
+          data: { celebrationJson: JSON.stringify({ trophies: celebrations }) },
+        });
+      }
+      return;
+    }
   }
 
   if (celebrations.length > 0) {
@@ -1051,6 +1129,28 @@ export async function advanceSeason(careerId: string, userId: string) {
       finalCareer.onLoanFromId,
     );
     return;
+  }
+
+  // A sustained high morale earns the captain's armband — but only the first time, so it can't
+  // fire again every single season the player happens to stay above the threshold.
+  if (finalCareer.morale >= 80) {
+    const alreadyOffered = await prisma.careerEventLog.count({
+      where: { careerId, eventKey: "capitania_moral" },
+    });
+    if (alreadyOffered === 0) {
+      const captaincyEvent = getEventByKey("capitania_moral")!;
+      await prisma.pendingEvent.create({
+        data: {
+          careerId,
+          age: finalCareer.age,
+          eventKey: captaincyEvent.key,
+          title: captaincyEvent.title,
+          description: captaincyEvent.description,
+          optionsJson: JSON.stringify(buildEventOptionsPayload(captaincyEvent)),
+        },
+      });
+      return;
+    }
   }
 
   const priorTransitions = await countClubTransitions(careerId);

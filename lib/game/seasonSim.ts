@@ -95,8 +95,9 @@ export function simulateSeason(input: SeasonSimInput): SeasonSimResult {
 
   const moraleFactor = 0.85 + 0.3 * (input.morale / 100);
 
-  const perMatchGoalRate = profile.scoreWeight * (attackRating / 99) * 0.75 * moraleFactor;
-  const perMatchAssistRate = profile.assistWeight * (passRating / 99) * 0.6 * moraleFactor;
+  // Bumped ~65%/40% — a great season's goal/assist tallies should feel like a real "wow" number.
+  const perMatchGoalRate = profile.scoreWeight * (attackRating / 99) * 1.25 * moraleFactor;
+  const perMatchAssistRate = profile.assistWeight * (passRating / 99) * 0.85 * moraleFactor;
 
   const goals = poisson(perMatchGoalRate * matchesPlayed);
   const assists = poisson(perMatchAssistRate * matchesPlayed);
@@ -207,8 +208,8 @@ export function simulateNationalTeamSeason(
     input.attributes.mentality * 0.25 +
     input.attributes.pace * 0.15;
 
-  const goals = poisson(caps * profile.scoreWeight * (attackRating / 99) * 0.4);
-  const assists = poisson(caps * profile.assistWeight * (passRating / 99) * 0.35);
+  const goals = poisson(caps * profile.scoreWeight * (attackRating / 99) * 0.65);
+  const assists = poisson(caps * profile.assistWeight * (passRating / 99) * 0.5);
 
   let wonMajorTournament = false;
   if (input.isMajorTournamentYear) {

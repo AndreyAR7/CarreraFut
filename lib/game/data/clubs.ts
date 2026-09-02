@@ -119,9 +119,11 @@ export const CLUBS: ClubSeed[] = [
 
   { key: "millonarios", name: "Millonarios", shortName: "MIL2", leagueKey: "CO1", reputation: 2, primaryColor: "#00539f" },
   { key: "nacionalco", name: "Atlético Nacional", shortName: "NAL", leagueKey: "CO1", reputation: 2, primaryColor: "#1a7a3d" },
+  { key: "junior", name: "Junior de Barranquilla", shortName: "JUN", leagueKey: "CO1", reputation: 2, primaryColor: "#d10a11" },
 
   { key: "colocolo", name: "Colo-Colo", shortName: "CCO", leagueKey: "CL1", reputation: 2, primaryColor: "#1a1a1a" },
   { key: "uchile", name: "Universidad de Chile", shortName: "UCH", leagueKey: "CL1", reputation: 2, primaryColor: "#00539f" },
+  { key: "ucatolica", name: "Universidad Católica", shortName: "UCA", leagueKey: "CL1", reputation: 2, primaryColor: "#00509d" },
 
   { key: "lagalaxy", name: "LA Galaxy", shortName: "LAG", leagueKey: "US1", reputation: 3, primaryColor: "#00245d" },
   { key: "intermiami", name: "Inter Miami CF", shortName: "MIA", leagueKey: "US1", reputation: 3, primaryColor: "#f7b5cd" },

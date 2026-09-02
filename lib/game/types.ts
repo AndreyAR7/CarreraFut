@@ -160,6 +160,8 @@ export interface EventEffects {
   awardsWorldCup?: boolean;
   /** Only used by the Champions League penalty-shootout decision — awards a CONTINENTAL trophy. */
   awardsContinentalTitle?: boolean;
+  /** Only used by the domestic cup final penalty-shootout decision — awards a DOMESTIC_CUP trophy. */
+  awardsDomesticCupTitle?: boolean;
   /** Only used by the signing-trial penalty-shootout decision — moves the player to a better club. */
   promotesToBetterClub?: boolean;
   /**

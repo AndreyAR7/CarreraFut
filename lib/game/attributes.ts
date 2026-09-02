@@ -125,6 +125,9 @@ export function buildStartingAttributes(position: Position): Attributes {
 
 export function marketValueFromOverall(overall: number, age: number): number {
   const ageFactor = age <= 24 ? 1.15 : age <= 29 ? 1 : age <= 33 ? 0.65 : 0.3;
-  const base = Math.pow(Math.max(overall - 35, 1), 2.55) * 40;
+  // A 99-overall young superstar should read as a real "wow" transfer fee (~€150M), not the
+  // ~€2M the old exponent/multiplier topped out at — that's what actually made market value feel
+  // unimpressive, more than any flat percentage bump would have fixed.
+  const base = Math.pow(Math.max(overall - 35, 1), 6) * 0.00219;
   return Math.max(20000, Math.round((base * ageFactor) / 1000) * 1000);
 }

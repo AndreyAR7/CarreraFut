@@ -6,14 +6,14 @@ export function applyAgeCurve(attributes: Attributes, age: number): Attributes {
   let growthOther: number;
 
   if (age <= 20) {
-    growthPace = 3;
-    growthOther = 2;
+    growthPace = 5;
+    growthOther = 3;
   } else if (age <= 24) {
-    growthPace = 2;
-    growthOther = 2;
+    growthPace = 3;
+    growthOther = 3;
   } else if (age <= 29) {
     growthPace = 0;
-    growthOther = 1;
+    growthOther = 2;
   } else if (age <= 32) {
     growthPace = -2;
     growthOther = 0;
