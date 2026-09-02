@@ -5,7 +5,10 @@ import { getCurrentUser } from "@/lib/auth";
 
 export default async function CarrerasLayout({ children }: LayoutProps<"/carreras">) {
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  // /session-invalid (not /login directly) — a stale session cookie whose row no longer exists
+  // in the DB needs to actually be cleared, or proxy.ts bounces straight back here forever (see
+  // app/session-invalid/route.ts for why a plain redirect() here can't clear it itself).
+  if (!user) redirect("/session-invalid");
 
   return (
     <div className="flex min-h-screen flex-col">

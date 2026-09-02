@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
+import { cache } from "react";
 import { prisma } from "./prisma";
 
 const SESSION_COOKIE_NAME = process.env.SESSION_COOKIE_NAME ?? "carrerafut_session";
@@ -39,7 +40,13 @@ export async function destroySession(): Promise<void> {
   cookieStore.delete(SESSION_COOKIE_NAME);
 }
 
-export async function getCurrentUser() {
+// Cached per-request (React's cache(), not a persistent cache) so every layout/page that calls
+// this during the same render sees the exact same result from one DB lookup — without it, a
+// layout's guard and a page's own independent call could each hit the database separately and,
+// under a race (e.g. the session expiring/being deleted between the two), disagree with each
+// other. That's exactly what caused app/carreras/page.tsx to crash on a null user despite the
+// layout above it having already confirmed one was logged in.
+export const getCurrentUser = cache(async function getCurrentUser() {
   const cookieStore = await cookies();
   const sessionId = cookieStore.get(SESSION_COOKIE_NAME)?.value;
   if (!sessionId) return null;
@@ -57,7 +64,7 @@ export async function getCurrentUser() {
   }
 
   return session.user;
-}
+});
 
 export async function requireUser() {
   const user = await getCurrentUser();

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { deleteCareerAction } from "@/app/actions/career";
 import { ClubCrest } from "@/components/ClubCrest";
 import { Flag } from "@/components/Flag";
@@ -25,8 +26,14 @@ const POSITION_ICONS: Record<Position, string> = {
 
 export default async function CarrerasPage() {
   const user = await getCurrentUser();
+  // The layout already redirects unauthenticated visitors, but it calls getCurrentUser()
+  // independently — this page can't assume that check already ran, so it needs its own guard
+  // instead of a `!` assertion that would crash the whole render. /session-invalid (not /login
+  // directly) actually clears a stale cookie instead of looping with proxy.ts forever.
+  if (!user) redirect("/session-invalid");
+
   const careers = await prisma.playerCareer.findMany({
-    where: { userId: user!.id },
+    where: { userId: user.id },
     include: { currentClub: true, nationality: true },
     orderBy: { updatedAt: "desc" },
   });
