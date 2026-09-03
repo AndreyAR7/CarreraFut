@@ -898,6 +898,16 @@ export async function advanceSeason(careerId: string, userId: string) {
       }
     }
 
+    // The World Cup final is its own month-long tournament — nothing else is being played while
+    // it's on, so a season that wins it (or comes down to its decisive shootout, outcome still
+    // pending the player's own choice) can't ALSO hand out a league/cup/continental title in
+    // parallel. Individual awards are untouched — those aren't tied to a specific competition.
+    if (shootoutTriggered || ntResult.wonMajorTournament) {
+      result.leagueTitleWon = false;
+      result.cupTitleWon = false;
+      result.continentalTitleWon = false;
+    }
+
     // Same idea for a continental final: only when the club run actually reached it, and only
     // one decisive penalty moment per batch (a World Cup shootout already covers that drama).
     let continentalShootoutTriggered = false;
@@ -906,6 +916,7 @@ export async function advanceSeason(careerId: string, userId: string) {
       !isGoalkeeper &&
       shootoutCooldownOver &&
       !shootoutTriggered &&
+      !ntResult.wonMajorTournament &&
       playsContinental &&
       (result.continentalResult === "FINAL" || result.continentalResult === "CAMPEON")
     ) {
@@ -927,6 +938,7 @@ export async function advanceSeason(careerId: string, userId: string) {
       !isGoalkeeper &&
       shootoutCooldownOver &&
       !shootoutTriggered &&
+      !ntResult.wonMajorTournament &&
       !continentalShootoutTriggered &&
       (result.cupResult === "FINAL" || result.cupResult === "CAMPEON")
     ) {
@@ -1111,7 +1123,11 @@ export async function advanceSeason(careerId: string, userId: string) {
       await prisma.pendingEvent.create({
         data: {
           careerId,
-          age: nextAge,
+          // The decisive moment belongs to the season that just played out, not the one about to
+          // start — matching the age this same season's (suppressed) league/cup/continental
+          // trophies would carry, so a later, genuinely independent season's own trophies can
+          // never collide with this one under the same age.
+          age: career.age,
           eventKey: shootoutEvent.key,
           title: shootoutEvent.title,
           description: shootoutEvent.description,
@@ -1132,7 +1148,7 @@ export async function advanceSeason(careerId: string, userId: string) {
       await prisma.pendingEvent.create({
         data: {
           careerId,
-          age: nextAge,
+          age: career.age,
           eventKey: shootoutEvent.key,
           title: shootoutEvent.title,
           description: shootoutEvent.description,
@@ -1153,7 +1169,7 @@ export async function advanceSeason(careerId: string, userId: string) {
       await prisma.pendingEvent.create({
         data: {
           careerId,
-          age: nextAge,
+          age: career.age,
           eventKey: shootoutEvent.key,
           title: shootoutEvent.title,
           description: shootoutEvent.description,
