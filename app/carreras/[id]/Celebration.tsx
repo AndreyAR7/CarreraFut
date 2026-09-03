@@ -1,5 +1,6 @@
 "use client";
 
+import { useFormStatus } from "react-dom";
 import { clearCelebrationAction } from "@/app/actions/career";
 import { TrophyIcon } from "@/components/TrophyIcon";
 import { TrophyTier } from "@/lib/game/types";
@@ -74,6 +75,25 @@ function ConfettiField() {
   );
 }
 
+// A spammed double/triple-click on the dismiss button (nothing here disabled it mid-submit)
+// could fire clearCelebrationAction several times in a row before the first response's
+// revalidated page landed — each call is harmless on its own, but the resulting pile-up of
+// in-flight submissions could keep re-rendering this same modal for a good while before things
+// settled. useFormStatus's pending flag stops that at the source: once the first submission is
+// in flight, the button disables itself until that render actually comes back.
+function DismissButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="w-full rounded-full bg-gold px-6 py-3 font-bold text-black transition hover:brightness-110 disabled:opacity-60"
+    >
+      {pending ? "Un momento…" : "¡Genial! Seguir"}
+    </button>
+  );
+}
+
 export function Celebration({ careerId, data }: { careerId: string; data: CelebrationData }) {
   const { trophies, retiring } = data;
 
@@ -104,12 +124,7 @@ export function Celebration({ careerId, data }: { careerId: string; data: Celebr
         </div>
         <p className="mt-4 text-xs text-muted">🎊 🎉 🥳 ¡Toda la oficina te felicita! 🥳 🎉 🎊</p>
         <form action={clearCelebrationAction.bind(null, careerId)} className="mt-5">
-          <button
-            type="submit"
-            className="w-full rounded-full bg-gold px-6 py-3 font-bold text-black transition hover:brightness-110"
-          >
-            ¡Genial! Seguir
-          </button>
+          <DismissButton />
         </form>
       </div>
     </div>
